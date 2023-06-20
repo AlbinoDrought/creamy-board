@@ -1,0 +1,32 @@
+version: '3'
+
+services:
+  creamy-board-migrate:
+    image: internal/creamy-board
+    build:
+      context: ..
+    command: migrate
+    environment:
+      - CREAMY_BOARD_DSN=dbname=creamyboard user=someuser password=somesecret host=postgres sslmode=disable
+
+  creamy-board-web:
+    image: internal/creamy-board
+    build:
+      context: ..
+    depends_on:
+      - creamy-board-migrate
+    environment:
+      - CREAMY_BOARD_LISTEN_ADDRESS=:80
+      - CREAMY_BOARD_DSN=dbname=creamyboard user=someuser password=somesecret host=postgres sslmode=disable
+
+  postgres:
+    image: postgres:15
+    environment:
+      - POSTGRES_USER=someuser
+      - POSTGRES_PASSWORD=somesecret
+      - POSTGRES_DB=creamyboard
+    volumes:
+      - postgres:/var/lib/postgresql/data
+
+volumes:
+  postgres:
