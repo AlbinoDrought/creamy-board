@@ -9,3 +9,7 @@ func Warnf(format string, v ...any) {
 func Infof(format string, v ...any) {
 	stdlog.Printf(format, v...)
 }
+
+func Printf(format string, v ...any) {
+	stdlog.Printf(format, v...)
+}
