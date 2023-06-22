@@ -57,11 +57,12 @@ INSERT INTO boards (slug, title, tagline) VALUES
   ('cb', 'Creamy Board', 'Welcome Home')
 ;
 INSERT INTO board_post_counters (board_id, next_post_id) VALUES
-  (1, 2)
+  (1, 3)
 ;
 INSERT INTO threads (board_id, thread_id, subject) VALUES
   (1, 1, 'Welcome to Creamy Board')
 ;
 INSERT INTO posts (board_id, thread_id, post_id, author, body) VALUES
-  (1, 1, 1, 'Migrator', 'Test post please ignore')
+  (1, 1, 1, 'Migrator', 'Test thread body please ignore')
+, (1, 1, 2, 'Migrator', 'Test post body please ignore')
 ;

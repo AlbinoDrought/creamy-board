@@ -36,6 +36,34 @@ type Querier interface {
 	ShowBoardFromSlugBatch(batch genericBatch, slug string)
 	// ShowBoardFromSlugScan scans the result of an executed ShowBoardFromSlugBatch query.
 	ShowBoardFromSlugScan(results pgx.BatchResults) (ShowBoardFromSlugRow, error)
+
+	ListActiveBoardThreads(ctx context.Context, params ListActiveBoardThreadsParams) ([]ListActiveBoardThreadsRow, error)
+	// ListActiveBoardThreadsBatch enqueues a ListActiveBoardThreads query into batch to be executed
+	// later by the batch.
+	ListActiveBoardThreadsBatch(batch genericBatch, params ListActiveBoardThreadsParams)
+	// ListActiveBoardThreadsScan scans the result of an executed ListActiveBoardThreadsBatch query.
+	ListActiveBoardThreadsScan(results pgx.BatchResults) ([]ListActiveBoardThreadsRow, error)
+
+	ListThreadRecentPosts(ctx context.Context, boardID int32, threadIds []int) ([]ListThreadRecentPostsRow, error)
+	// ListThreadRecentPostsBatch enqueues a ListThreadRecentPosts query into batch to be executed
+	// later by the batch.
+	ListThreadRecentPostsBatch(batch genericBatch, boardID int32, threadIds []int)
+	// ListThreadRecentPostsScan scans the result of an executed ListThreadRecentPostsBatch query.
+	ListThreadRecentPostsScan(results pgx.BatchResults) ([]ListThreadRecentPostsRow, error)
+
+	ShowThread(ctx context.Context, boardID int32, threadID int) (ShowThreadRow, error)
+	// ShowThreadBatch enqueues a ShowThread query into batch to be executed
+	// later by the batch.
+	ShowThreadBatch(batch genericBatch, boardID int32, threadID int)
+	// ShowThreadScan scans the result of an executed ShowThreadBatch query.
+	ShowThreadScan(results pgx.BatchResults) (ShowThreadRow, error)
+
+	ListThreadPosts(ctx context.Context, boardID int32, threadID int) ([]ListThreadPostsRow, error)
+	// ListThreadPostsBatch enqueues a ListThreadPosts query into batch to be executed
+	// later by the batch.
+	ListThreadPostsBatch(batch genericBatch, boardID int32, threadID int)
+	// ListThreadPostsScan scans the result of an executed ListThreadPostsBatch query.
+	ListThreadPostsScan(results pgx.BatchResults) ([]ListThreadPostsRow, error)
 }
 
 type DBQuerier struct {
@@ -121,6 +149,18 @@ func PrepareAllQueries(ctx context.Context, p preparer) error {
 	}
 	if _, err := p.Prepare(ctx, showBoardFromSlugSQL, showBoardFromSlugSQL); err != nil {
 		return fmt.Errorf("prepare query 'ShowBoardFromSlug': %w", err)
+	}
+	if _, err := p.Prepare(ctx, listActiveBoardThreadsSQL, listActiveBoardThreadsSQL); err != nil {
+		return fmt.Errorf("prepare query 'ListActiveBoardThreads': %w", err)
+	}
+	if _, err := p.Prepare(ctx, listThreadRecentPostsSQL, listThreadRecentPostsSQL); err != nil {
+		return fmt.Errorf("prepare query 'ListThreadRecentPosts': %w", err)
+	}
+	if _, err := p.Prepare(ctx, showThreadSQL, showThreadSQL); err != nil {
+		return fmt.Errorf("prepare query 'ShowThread': %w", err)
+	}
+	if _, err := p.Prepare(ctx, listThreadPostsSQL, listThreadPostsSQL); err != nil {
+		return fmt.Errorf("prepare query 'ListThreadPosts': %w", err)
 	}
 	return nil
 }
@@ -294,6 +334,260 @@ func (q *DBQuerier) ShowBoardFromSlugScan(results pgx.BatchResults) (ShowBoardFr
 		return item, fmt.Errorf("scan ShowBoardFromSlugBatch row: %w", err)
 	}
 	return item, nil
+}
+
+const listActiveBoardThreadsSQL = `SELECT threads.thread_id, threads.created_at, threads.bumped_at, posts.author, posts.body
+FROM threads
+-- join the thread post:
+INNER JOIN posts
+ON posts.board_id = threads.board_id
+AND posts.thread_id = threads.thread_id
+AND posts.post_id = threads.thread_id
+WHERE threads.board_id = $1
+ORDER BY threads.bumped_at DESC
+LIMIT $2
+OFFSET $3 
+;`
+
+type ListActiveBoardThreadsParams struct {
+	BoardID int32
+	Limit   int
+	Offset  int
+}
+
+type ListActiveBoardThreadsRow struct {
+	ThreadID  *int             `json:"thread_id"`
+	CreatedAt pgtype.Timestamp `json:"created_at"`
+	BumpedAt  pgtype.Timestamp `json:"bumped_at"`
+	Author    pgtype.Varchar   `json:"author"`
+	Body      *string          `json:"body"`
+}
+
+// ListActiveBoardThreads implements Querier.ListActiveBoardThreads.
+func (q *DBQuerier) ListActiveBoardThreads(ctx context.Context, params ListActiveBoardThreadsParams) ([]ListActiveBoardThreadsRow, error) {
+	ctx = context.WithValue(ctx, "pggen_query_name", "ListActiveBoardThreads")
+	rows, err := q.conn.Query(ctx, listActiveBoardThreadsSQL, params.BoardID, params.Limit, params.Offset)
+	if err != nil {
+		return nil, fmt.Errorf("query ListActiveBoardThreads: %w", err)
+	}
+	defer rows.Close()
+	items := []ListActiveBoardThreadsRow{}
+	for rows.Next() {
+		var item ListActiveBoardThreadsRow
+		if err := rows.Scan(&item.ThreadID, &item.CreatedAt, &item.BumpedAt, &item.Author, &item.Body); err != nil {
+			return nil, fmt.Errorf("scan ListActiveBoardThreads row: %w", err)
+		}
+		items = append(items, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("close ListActiveBoardThreads rows: %w", err)
+	}
+	return items, err
+}
+
+// ListActiveBoardThreadsBatch implements Querier.ListActiveBoardThreadsBatch.
+func (q *DBQuerier) ListActiveBoardThreadsBatch(batch genericBatch, params ListActiveBoardThreadsParams) {
+	batch.Queue(listActiveBoardThreadsSQL, params.BoardID, params.Limit, params.Offset)
+}
+
+// ListActiveBoardThreadsScan implements Querier.ListActiveBoardThreadsScan.
+func (q *DBQuerier) ListActiveBoardThreadsScan(results pgx.BatchResults) ([]ListActiveBoardThreadsRow, error) {
+	rows, err := results.Query()
+	if err != nil {
+		return nil, fmt.Errorf("query ListActiveBoardThreadsBatch: %w", err)
+	}
+	defer rows.Close()
+	items := []ListActiveBoardThreadsRow{}
+	for rows.Next() {
+		var item ListActiveBoardThreadsRow
+		if err := rows.Scan(&item.ThreadID, &item.CreatedAt, &item.BumpedAt, &item.Author, &item.Body); err != nil {
+			return nil, fmt.Errorf("scan ListActiveBoardThreadsBatch row: %w", err)
+		}
+		items = append(items, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("close ListActiveBoardThreadsBatch rows: %w", err)
+	}
+	return items, err
+}
+
+const listThreadRecentPostsSQL = `SELECT threads.thread_id, recent_posts.post_id, recent_posts.created_at, recent_posts.author, recent_posts.body
+FROM threads
+JOIN LATERAL (
+  SELECT post_id, created_at, author, body
+  FROM posts
+  WHERE posts.board_id = threads.board_id
+  AND posts.thread_id = threads.thread_id
+  AND posts.post_id != threads.thread_id -- ignore the thread post
+  ORDER BY posts.post_id
+  LIMIT 5
+) recent_posts ON TRUE
+WHERE threads.board_id = $1
+AND threads.thread_id = ANY ($2::BIGINT[])
+;`
+
+type ListThreadRecentPostsRow struct {
+	ThreadID  *int             `json:"thread_id"`
+	PostID    *int             `json:"post_id"`
+	CreatedAt pgtype.Timestamp `json:"created_at"`
+	Author    pgtype.Varchar   `json:"author"`
+	Body      *string          `json:"body"`
+}
+
+// ListThreadRecentPosts implements Querier.ListThreadRecentPosts.
+func (q *DBQuerier) ListThreadRecentPosts(ctx context.Context, boardID int32, threadIds []int) ([]ListThreadRecentPostsRow, error) {
+	ctx = context.WithValue(ctx, "pggen_query_name", "ListThreadRecentPosts")
+	rows, err := q.conn.Query(ctx, listThreadRecentPostsSQL, boardID, threadIds)
+	if err != nil {
+		return nil, fmt.Errorf("query ListThreadRecentPosts: %w", err)
+	}
+	defer rows.Close()
+	items := []ListThreadRecentPostsRow{}
+	for rows.Next() {
+		var item ListThreadRecentPostsRow
+		if err := rows.Scan(&item.ThreadID, &item.PostID, &item.CreatedAt, &item.Author, &item.Body); err != nil {
+			return nil, fmt.Errorf("scan ListThreadRecentPosts row: %w", err)
+		}
+		items = append(items, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("close ListThreadRecentPosts rows: %w", err)
+	}
+	return items, err
+}
+
+// ListThreadRecentPostsBatch implements Querier.ListThreadRecentPostsBatch.
+func (q *DBQuerier) ListThreadRecentPostsBatch(batch genericBatch, boardID int32, threadIds []int) {
+	batch.Queue(listThreadRecentPostsSQL, boardID, threadIds)
+}
+
+// ListThreadRecentPostsScan implements Querier.ListThreadRecentPostsScan.
+func (q *DBQuerier) ListThreadRecentPostsScan(results pgx.BatchResults) ([]ListThreadRecentPostsRow, error) {
+	rows, err := results.Query()
+	if err != nil {
+		return nil, fmt.Errorf("query ListThreadRecentPostsBatch: %w", err)
+	}
+	defer rows.Close()
+	items := []ListThreadRecentPostsRow{}
+	for rows.Next() {
+		var item ListThreadRecentPostsRow
+		if err := rows.Scan(&item.ThreadID, &item.PostID, &item.CreatedAt, &item.Author, &item.Body); err != nil {
+			return nil, fmt.Errorf("scan ListThreadRecentPostsBatch row: %w", err)
+		}
+		items = append(items, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("close ListThreadRecentPostsBatch rows: %w", err)
+	}
+	return items, err
+}
+
+const showThreadSQL = `SELECT threads.thread_id, threads.created_at, threads.bumped_at, posts.author, posts.body
+FROM threads
+-- join the thread post:
+INNER JOIN posts
+ON posts.board_id = threads.board_id
+AND posts.thread_id = threads.thread_id
+AND posts.post_id = threads.thread_id
+WHERE threads.board_id = $1
+AND threads.thread_id = $2
+;`
+
+type ShowThreadRow struct {
+	ThreadID  *int             `json:"thread_id"`
+	CreatedAt pgtype.Timestamp `json:"created_at"`
+	BumpedAt  pgtype.Timestamp `json:"bumped_at"`
+	Author    pgtype.Varchar   `json:"author"`
+	Body      *string          `json:"body"`
+}
+
+// ShowThread implements Querier.ShowThread.
+func (q *DBQuerier) ShowThread(ctx context.Context, boardID int32, threadID int) (ShowThreadRow, error) {
+	ctx = context.WithValue(ctx, "pggen_query_name", "ShowThread")
+	row := q.conn.QueryRow(ctx, showThreadSQL, boardID, threadID)
+	var item ShowThreadRow
+	if err := row.Scan(&item.ThreadID, &item.CreatedAt, &item.BumpedAt, &item.Author, &item.Body); err != nil {
+		return item, fmt.Errorf("query ShowThread: %w", err)
+	}
+	return item, nil
+}
+
+// ShowThreadBatch implements Querier.ShowThreadBatch.
+func (q *DBQuerier) ShowThreadBatch(batch genericBatch, boardID int32, threadID int) {
+	batch.Queue(showThreadSQL, boardID, threadID)
+}
+
+// ShowThreadScan implements Querier.ShowThreadScan.
+func (q *DBQuerier) ShowThreadScan(results pgx.BatchResults) (ShowThreadRow, error) {
+	row := results.QueryRow()
+	var item ShowThreadRow
+	if err := row.Scan(&item.ThreadID, &item.CreatedAt, &item.BumpedAt, &item.Author, &item.Body); err != nil {
+		return item, fmt.Errorf("scan ShowThreadBatch row: %w", err)
+	}
+	return item, nil
+}
+
+const listThreadPostsSQL = `SELECT post_id, created_at, author, body
+FROM posts
+WHERE posts.board_id = $1
+AND posts.thread_id = $2
+AND posts.post_id != $2 -- ignore the thread post
+ORDER BY posts.post_id
+;`
+
+type ListThreadPostsRow struct {
+	PostID    *int             `json:"post_id"`
+	CreatedAt pgtype.Timestamp `json:"created_at"`
+	Author    pgtype.Varchar   `json:"author"`
+	Body      *string          `json:"body"`
+}
+
+// ListThreadPosts implements Querier.ListThreadPosts.
+func (q *DBQuerier) ListThreadPosts(ctx context.Context, boardID int32, threadID int) ([]ListThreadPostsRow, error) {
+	ctx = context.WithValue(ctx, "pggen_query_name", "ListThreadPosts")
+	rows, err := q.conn.Query(ctx, listThreadPostsSQL, boardID, threadID)
+	if err != nil {
+		return nil, fmt.Errorf("query ListThreadPosts: %w", err)
+	}
+	defer rows.Close()
+	items := []ListThreadPostsRow{}
+	for rows.Next() {
+		var item ListThreadPostsRow
+		if err := rows.Scan(&item.PostID, &item.CreatedAt, &item.Author, &item.Body); err != nil {
+			return nil, fmt.Errorf("scan ListThreadPosts row: %w", err)
+		}
+		items = append(items, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("close ListThreadPosts rows: %w", err)
+	}
+	return items, err
+}
+
+// ListThreadPostsBatch implements Querier.ListThreadPostsBatch.
+func (q *DBQuerier) ListThreadPostsBatch(batch genericBatch, boardID int32, threadID int) {
+	batch.Queue(listThreadPostsSQL, boardID, threadID)
+}
+
+// ListThreadPostsScan implements Querier.ListThreadPostsScan.
+func (q *DBQuerier) ListThreadPostsScan(results pgx.BatchResults) ([]ListThreadPostsRow, error) {
+	rows, err := results.Query()
+	if err != nil {
+		return nil, fmt.Errorf("query ListThreadPostsBatch: %w", err)
+	}
+	defer rows.Close()
+	items := []ListThreadPostsRow{}
+	for rows.Next() {
+		var item ListThreadPostsRow
+		if err := rows.Scan(&item.PostID, &item.CreatedAt, &item.Author, &item.Body); err != nil {
+			return nil, fmt.Errorf("scan ListThreadPostsBatch row: %w", err)
+		}
+		items = append(items, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("close ListThreadPostsBatch rows: %w", err)
+	}
+	return items, err
 }
 
 // textPreferrer wraps a pgtype.ValueTranscoder and sets the preferred encoding
