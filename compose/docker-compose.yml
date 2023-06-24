@@ -5,21 +5,36 @@ services:
     image: internal/creamy-board
     build:
       context: ..
+    depends_on:
+      - postgres
+      - minio
     command: migrate
     environment:
-      - CREAMY_BOARD_DSN=dbname=creamyboard user=someuser password=somesecret host=postgres sslmode=disable
+      - CREAMY_DSN=dbname=creamyboard user=someuser password=somesecret host=postgres sslmode=disable
+      - CREAMY_STORAGE_DRIVER=minio
+      - CREAMY_MINIO_ENDPOINT=http://minio:9000
+      - CREAMY_MINIO_KEY=creamyboard
+      - CREAMY_MINIO_SECRET=creamyboard
+      - CREAMY_MINIO_BUCKET=creamyboard
 
   creamy-board-web:
     image: internal/creamy-board
     build:
       context: ..
     depends_on:
+      - postgres
+      - minio
       - creamy-board-migrate
     ports:
       - 80:80
     environment:
-      - CREAMY_BOARD_LISTEN_ADDRESS=:80
-      - CREAMY_BOARD_DSN=dbname=creamyboard user=someuser password=somesecret host=postgres sslmode=disable
+      - CREAMY_LISTEN_ADDRESS=:80
+      - CREAMY_DSN=dbname=creamyboard user=someuser password=somesecret host=postgres sslmode=disable
+      - CREAMY_STORAGE_DRIVER=minio
+      - CREAMY_MINIO_ENDPOINT=http://minio:9000
+      - CREAMY_MINIO_KEY=creamyboard
+      - CREAMY_MINIO_SECRET=creamyboard
+      - CREAMY_MINIO_BUCKET=creamyboard
 
   postgres:
     image: postgres:15
@@ -30,5 +45,15 @@ services:
     volumes:
       - postgres:/var/lib/postgresql/data
 
+  minio:
+    image: minio/minio:RELEASE.2023-06-23T20-26-00Z
+    environment:
+      - MINIO_ACCESS_KEY=creamyboard
+      - MINIO_SECRET_KEY=creamyboard
+    command: server /data
+    volumes:
+      - minio:/data
+
 volumes:
   postgres:
+  minio:

@@ -8,6 +8,7 @@ require (
 	github.com/Masterminds/sprig/v3 v3.2.3 // indirect
 	github.com/Microsoft/go-winio v0.5.1 // indirect
 	github.com/a-h/templ v0.2.304 // indirect
+	github.com/aws/aws-sdk-go v1.44.289 // indirect
 	github.com/containerd/containerd v1.5.7 // indirect
 	github.com/docker/distribution v2.7.1+incompatible // indirect
 	github.com/docker/docker v20.10.10+incompatible // indirect
@@ -29,6 +30,7 @@ require (
 	github.com/jackc/pgx/v4 v4.13.0 // indirect
 	github.com/jackc/pgx/v5 v5.4.0 // indirect
 	github.com/jackc/tern/v2 v2.1.1 // indirect
+	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/jschaf/pggen v0.0.0-20230617231155-db00fd2ab277 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
