@@ -5,12 +5,20 @@ import (
 	"strconv"
 
 	"github.com/go-chi/chi"
+	"go.albinodrought.com/creamy-board/internal/cfg"
+	"go.albinodrought.com/creamy-board/internal/repo"
 )
 
 func Router() http.Handler {
 	r := chi.NewRouter()
 
-	jsonPortal := JSONWebPortal{}
+	repo := repo.DBRepo{
+		Querier: cfg.Querier,
+	}
+
+	jsonPortal := JSONWebPortal{
+		Repo: &repo,
+	}
 
 	r.Get("/boards.json", jsonPortal.ListBoards)
 	r.Get("/boards/{boardSlug}/info.json", func(w http.ResponseWriter, r *http.Request) {
@@ -24,7 +32,7 @@ func Router() http.Handler {
 		}
 		jsonPortal.ListBoardThreads(w, r, chi.URLParam(r, "boardSlug"), page)
 	})
-	r.Get("/boards/{boardSlug}/threads/{threadID}.json", func(w http.ResponseWriter, r *http.Request) {
+	r.Get("/boards/{boardSlug}/threads/{threadID}/full.json", func(w http.ResponseWriter, r *http.Request) {
 		threadIDStr := chi.URLParam(r, "threadID")
 		threadID, err := strconv.Atoi(threadIDStr)
 		if err != nil || threadID <= 0 {
