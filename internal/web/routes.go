@@ -8,10 +8,14 @@ import (
 	"github.com/go-chi/chi"
 	"go.albinodrought.com/creamy-board/internal/cfg"
 	"go.albinodrought.com/creamy-board/internal/repo"
+	"go.albinodrought.com/creamy-board/internal/web/static"
 )
 
 func Router() http.Handler {
 	r := chi.NewRouter()
+
+	fileServer := http.FileServer(http.FS(static.FS))
+	r.NotFound(fileServer.ServeHTTP)
 
 	repo := repo.DBRepo{
 		Querier: cfg.Querier,

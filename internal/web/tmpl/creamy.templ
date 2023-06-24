@@ -30,37 +30,48 @@ func textThread(board *repo.Board, thread *repo.Thread) string {
 // components:
 
 templ postHead(board *repo.Board, thread *repo.Thread, post *repo.Post) {
-	<span class="post__author">{ post.Author }</span>
-	<span class="post__date">{ post.CreatedAt }</span>
-	<a class="post__link-show" href={ linkPostShow(board, thread, post) }>No.&nbsp;</a>
+	<span class="post__author">{ post.Author }</span><wbr />
+	&nbsp;
+	<span class="post__date">{ post.CreatedAt }</span><wbr />
+	&nbsp;
+	<a class="post__link-show" href={ linkPostShow(board, thread, post) }>No.</a>
+	&nbsp;
 	<a class="post__link-quote" href={ linkPostQuote(board, thread, post) }>{ fmt.Sprintf("%v", post.ID) }</a>
 }
 
-templ threadHead(board *repo.Board, thread *repo.Thread, post *repo.Post) {
-	<span class="thread__subject">{ thread.Subject }</span>
+templ threadHead(board *repo.Board, thread *repo.Thread, post *repo.Post, inThread bool) {
+	<span class="thread__subject">{ thread.Subject }</span><wbr />
+	&nbsp;
 	@postHead(board, thread, post)
-	<a class="thread__link-reply" href={ linkThreadShow(board, thread) }>[Reply]</a>
+	&nbsp;
+	if (!inThread) {
+		<a class="thread__link-reply" href={ linkThreadShow(board, thread) }>[Reply]</a>
+	}
 }
 
 templ postFull(board *repo.Board, thread *repo.Thread, post *repo.Post) {
 	<div class="post">
-		<div class="post__head">
-			@postHead(board, thread, post)
-		</div>
-		<div class="post__body">
-			{ post.Body }
+		<div class="post__content">
+			<div class="post__head">
+				@postHead(board, thread, post)
+			</div>
+			<div class="post__body">
+				{ post.Body }
+			</div>
 		</div>
 	</div>
 }
 
-templ threadFull(board *repo.Board, thread *repo.Thread, main *repo.Post, other []repo.Post) {
+templ threadFull(board *repo.Board, thread *repo.Thread, main *repo.Post, other []repo.Post, inThread bool) {
 	<div class="thread">
 		<div class="post post--op">
-			<div class="post__head">
-				@threadHead(board, thread, main)
-			</div>
-			<div class="post__body">
-				{ main.Body }
+		<div class="post__content">
+				<div class="post__head">
+					@threadHead(board, thread, main, inThread)
+				</div>
+				<div class="post__body">
+					{ main.Body }
+				</div>
 			</div>
 		</div>
 		<div class="thread__posts">
@@ -83,17 +94,19 @@ templ page(title string, description string) {
       <meta name="description" content="{ description }" />
       <link rel="icon" href="/favicon.ico" />
       <title>{ title }</title>
-      <style type="text/css">
-        html, body { 
-          background-color: black; /* it's 1am and i'm getting flashbanged by default css */
-          color: white;
-        }
-      </style>
+			<link href="/css/main.css" rel="stylesheet" />
     </head>
     <body>
       { children... }
     </body>
   </html>
+}
+
+templ wrapperBoard(board *repo.Board) {
+	<h1 class="board__title">{ textBoard(board) }</h1>
+	<h2 class="board__tag">{ board.Tagline }</h2>
+	<hr />
+	{ children... }
 }
 
 // entrypoints:
@@ -110,17 +123,18 @@ templ ListBoards(boards []repo.Board) {
 
 templ ShowBoardAndRecents(brt *repo.BoardRecentThreads) {
 	@page(textBoard(&brt.Board), brt.Board.Tagline) {
-		<h1 class="board__title">{ textBoard(&brt.Board) }</h1>
-		<h2 class="board__tag">{ brt.Board.Tagline }</h2>
-		<hr />
-		for _, thread := range brt.RecentThreads {
-			@threadFull(&brt.Board, &thread.Thread, &thread.MainPost, thread.RecentPosts)
+		@wrapperBoard(&brt.Board) {
+			for _, thread := range brt.RecentThreads {
+				@threadFull(&brt.Board, &thread.Thread, &thread.MainPost, thread.RecentPosts, false)
+			}
 		}
 	}
 }
 
 templ ShowFullThread(bft *repo.BoardFullThread) {
 	@page(textThread(&bft.Board, &bft.FullThread.Thread), bft.FullThread.MainPost.Body) {
-		@threadFull(&bft.Board, &bft.FullThread.Thread, &bft.FullThread.MainPost, bft.FullThread.AllPosts)
+		@wrapperBoard(&bft.Board) {
+			@threadFull(&bft.Board, &bft.FullThread.Thread, &bft.FullThread.MainPost, bft.FullThread.AllPosts, true)
+		}
 	}
 }
