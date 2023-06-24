@@ -1,6 +1,7 @@
 package web
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -16,26 +17,66 @@ func Router() http.Handler {
 		Querier: cfg.Querier,
 	}
 
+	htmlPortal := HTMLWebPortal{
+		Repo: &repo,
+	}
+
+	r.Get("/", htmlPortal.ListBoards)
+	r.Get("/index.html", htmlPortal.ListBoards)
+	r.Get("/{boardSlug}/", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, fmt.Sprintf("/%v/index.html", chi.URLParam(r, "boardSlug")), http.StatusFound)
+	})
+	r.Get("/{boardSlug}/index.html", func(w http.ResponseWriter, r *http.Request) {
+		htmlPortal.ListBoardThreads(w, r, chi.URLParam(r, "boardSlug"), 1)
+	})
+	r.Get("/{boardSlug}/{page}.html", func(w http.ResponseWriter, r *http.Request) {
+		pageStr := chi.URLParam(r, "page")
+		page, err := strconv.Atoi(pageStr)
+		if err != nil || page < 0 {
+			page = 0
+		}
+		if page == 1 {
+			http.Redirect(w, r, fmt.Sprintf("/%v/index.html", chi.URLParam(r, "boardSlug")), http.StatusFound)
+			return
+		}
+
+		htmlPortal.ListBoardThreads(w, r, chi.URLParam(r, "boardSlug"), page)
+	})
+	r.Get("/{boardSlug}/res/{threadID}.html", func(w http.ResponseWriter, r *http.Request) {
+		threadIDStr := chi.URLParam(r, "threadID")
+		threadID, err := strconv.Atoi(threadIDStr)
+		if err != nil || threadID < 0 {
+			threadID = 0 // let handler show 404
+		}
+
+		htmlPortal.ShowThread(w, r, chi.URLParam(r, "boardSlug"), threadID)
+	})
+
 	jsonPortal := JSONWebPortal{
 		Repo: &repo,
 	}
 
-	r.Get("/boards.json", jsonPortal.ListBoards)
-	r.Get("/boards/{boardSlug}/info.json", func(w http.ResponseWriter, r *http.Request) {
-		jsonPortal.ShowBoard(w, r, chi.URLParam(r, "boardSlug"))
+	r.Get("/index.json", jsonPortal.ListBoards)
+	r.Get("/{boardSlug}/index.json", func(w http.ResponseWriter, r *http.Request) {
+		jsonPortal.ListBoardThreads(w, r, chi.URLParam(r, "boardSlug"), 1)
 	})
-	r.Get("/boards/{boardSlug}/threads.json", func(w http.ResponseWriter, r *http.Request) {
-		pageStr := r.URL.Query().Get("page")
+	r.Get("/{boardSlug}/{page}.json", func(w http.ResponseWriter, r *http.Request) {
+		pageStr := chi.URLParam(r, "page")
 		page, err := strconv.Atoi(pageStr)
-		if err != nil || page <= 0 {
-			page = 1
+		if err != nil || page < 0 {
+			page = 0
 		}
+		if page == 1 {
+			http.Redirect(w, r, fmt.Sprintf("/%v/index.json", chi.URLParam(r, "boardSlug")), http.StatusFound)
+			return
+		}
+
 		jsonPortal.ListBoardThreads(w, r, chi.URLParam(r, "boardSlug"), page)
 	})
-	r.Get("/boards/{boardSlug}/threads/{threadID}/full.json", func(w http.ResponseWriter, r *http.Request) {
+	r.Get("/{boardSlug}/res/{threadID}.json", func(w http.ResponseWriter, r *http.Request) {
 		threadIDStr := chi.URLParam(r, "threadID")
 		threadID, err := strconv.Atoi(threadIDStr)
-		if err != nil || threadID <= 0 {
+		if err != nil || threadID < 0 {
 			threadID = 0 // let handler show 404
 		}
 		jsonPortal.ShowThread(w, r, chi.URLParam(r, "boardSlug"), threadID)

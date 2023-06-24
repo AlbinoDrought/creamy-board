@@ -1,0 +1,126 @@
+package tmpl
+
+import (
+	"fmt"
+	"go.albinodrought.com/creamy-board/internal/repo"
+)
+
+// formatters:
+
+func linkBoard(board *repo.Board) templ.SafeURL {
+	return templ.SafeURL(fmt.Sprintf("/%v/", board.Slug))
+}
+func linkThreadShow(board *repo.Board, thread *repo.Thread) templ.SafeURL {
+	return templ.SafeURL(fmt.Sprintf("/%v/res/%v.html", board.Slug, thread.ID))
+}
+func linkPostShow(board *repo.Board, thread *repo.Thread, post *repo.Post) templ.SafeURL {
+	return templ.SafeURL(fmt.Sprintf("/%v/res/%v.html#%v", board.Slug, thread.ID, post.ID))
+}
+func linkPostQuote(board *repo.Board, thread *repo.Thread, post *repo.Post) templ.SafeURL {
+	return templ.SafeURL(fmt.Sprintf("/%v/res/%v.html#q%v", board.Slug, thread.ID, post.ID))
+}
+
+func textBoard(board *repo.Board) string {
+	return fmt.Sprintf("/%v/ - %v", board.Slug, board.Title)
+}
+func textThread(board *repo.Board, thread *repo.Thread) string {
+	return fmt.Sprintf("/%v/ - %v", board.Slug, thread.Subject)
+}
+
+// components:
+
+templ postHead(board *repo.Board, thread *repo.Thread, post *repo.Post) {
+	<span class="post__author">{ post.Author }</span>
+	<span class="post__date">{ post.CreatedAt }</span>
+	<a class="post__link-show" href={ linkPostShow(board, thread, post) }>No.&nbsp;</a>
+	<a class="post__link-quote" href={ linkPostQuote(board, thread, post) }>{ fmt.Sprintf("%v", post.ID) }</a>
+}
+
+templ threadHead(board *repo.Board, thread *repo.Thread, post *repo.Post) {
+	<span class="thread__subject">{ thread.Subject }</span>
+	@postHead(board, thread, post)
+	<a class="thread__link-reply" href={ linkThreadShow(board, thread) }>[Reply]</a>
+}
+
+templ postFull(board *repo.Board, thread *repo.Thread, post *repo.Post) {
+	<div class="post">
+		<div class="post__head">
+			@postHead(board, thread, post)
+		</div>
+		<div class="post__body">
+			{ post.Body }
+		</div>
+	</div>
+}
+
+templ threadFull(board *repo.Board, thread *repo.Thread, main *repo.Post, other []repo.Post) {
+	<div class="thread">
+		<div class="post post--op">
+			<div class="post__head">
+				@threadHead(board, thread, main)
+			</div>
+			<div class="post__body">
+				{ main.Body }
+			</div>
+		</div>
+		<div class="thread__posts">
+			for _, post := range other {
+				@postFull(board, thread, &post)
+			}
+		</div>
+	</div>
+}
+
+// wrappers:
+
+templ page(title string, description string) {
+  <!DOCTYPE html>
+  <html lang="en">
+    <head>
+      <meta charset="utf-8" />
+      <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+      <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+      <meta name="description" content="{ description }" />
+      <link rel="icon" href="/favicon.ico" />
+      <title>{ title }</title>
+      <style type="text/css">
+        html, body { 
+          background-color: black; /* it's 1am and i'm getting flashbanged by default css */
+          color: white;
+        }
+      </style>
+    </head>
+    <body>
+      { children... }
+    </body>
+  </html>
+}
+
+// entrypoints:
+
+templ ListBoards(boards []repo.Board) {
+	@page("Creamy Board", "the world is your oyster") {
+		<ul>
+			for _, board := range boards {
+				<a href={ linkBoard(&board) }>{ textBoard(&board) }</a>
+			}
+		</ul>
+	}
+}
+
+templ ShowBoardAndRecents(brt *repo.BoardRecentThreads) {
+	@page(textBoard(&brt.Board), brt.Board.Tagline) {
+		<h1 class="board__title">{ textBoard(&brt.Board) }</h1>
+		<h2 class="board__tag">{ brt.Board.Tagline }</h2>
+		<hr />
+		for _, thread := range brt.RecentThreads {
+			@threadFull(&brt.Board, &thread.Thread, &thread.MainPost, thread.RecentPosts)
+		}
+	}
+}
+
+templ ShowFullThread(bft *repo.BoardFullThread) {
+	@page(textThread(&bft.Board, &bft.FullThread.Thread), bft.FullThread.MainPost.Body) {
+		@threadFull(&bft.Board, &bft.FullThread.Thread, &bft.FullThread.MainPost, bft.FullThread.AllPosts)
+	}
+}

@@ -336,7 +336,7 @@ func (q *DBQuerier) ShowBoardFromSlugScan(results pgx.BatchResults) (ShowBoardFr
 	return item, nil
 }
 
-const listActiveBoardThreadsSQL = `SELECT threads.thread_id, threads.created_at, threads.bumped_at, posts.author, posts.body
+const listActiveBoardThreadsSQL = `SELECT threads.thread_id, threads.created_at, threads.bumped_at, threads.subject, posts.author, posts.body
 FROM threads
 -- join the thread post:
 INNER JOIN posts
@@ -359,6 +359,7 @@ type ListActiveBoardThreadsRow struct {
 	ThreadID  *int             `json:"thread_id"`
 	CreatedAt pgtype.Timestamp `json:"created_at"`
 	BumpedAt  pgtype.Timestamp `json:"bumped_at"`
+	Subject   pgtype.Varchar   `json:"subject"`
 	Author    pgtype.Varchar   `json:"author"`
 	Body      *string          `json:"body"`
 }
@@ -374,7 +375,7 @@ func (q *DBQuerier) ListActiveBoardThreads(ctx context.Context, params ListActiv
 	items := []ListActiveBoardThreadsRow{}
 	for rows.Next() {
 		var item ListActiveBoardThreadsRow
-		if err := rows.Scan(&item.ThreadID, &item.CreatedAt, &item.BumpedAt, &item.Author, &item.Body); err != nil {
+		if err := rows.Scan(&item.ThreadID, &item.CreatedAt, &item.BumpedAt, &item.Subject, &item.Author, &item.Body); err != nil {
 			return nil, fmt.Errorf("scan ListActiveBoardThreads row: %w", err)
 		}
 		items = append(items, item)
@@ -400,7 +401,7 @@ func (q *DBQuerier) ListActiveBoardThreadsScan(results pgx.BatchResults) ([]List
 	items := []ListActiveBoardThreadsRow{}
 	for rows.Next() {
 		var item ListActiveBoardThreadsRow
-		if err := rows.Scan(&item.ThreadID, &item.CreatedAt, &item.BumpedAt, &item.Author, &item.Body); err != nil {
+		if err := rows.Scan(&item.ThreadID, &item.CreatedAt, &item.BumpedAt, &item.Subject, &item.Author, &item.Body); err != nil {
 			return nil, fmt.Errorf("scan ListActiveBoardThreadsBatch row: %w", err)
 		}
 		items = append(items, item)
@@ -482,7 +483,7 @@ func (q *DBQuerier) ListThreadRecentPostsScan(results pgx.BatchResults) ([]ListT
 	return items, err
 }
 
-const showThreadSQL = `SELECT threads.thread_id, threads.created_at, threads.bumped_at, posts.author, posts.body
+const showThreadSQL = `SELECT threads.thread_id, threads.created_at, threads.bumped_at, threads.subject, posts.author, posts.body
 FROM threads
 -- join the thread post:
 INNER JOIN posts
@@ -497,6 +498,7 @@ type ShowThreadRow struct {
 	ThreadID  *int             `json:"thread_id"`
 	CreatedAt pgtype.Timestamp `json:"created_at"`
 	BumpedAt  pgtype.Timestamp `json:"bumped_at"`
+	Subject   pgtype.Varchar   `json:"subject"`
 	Author    pgtype.Varchar   `json:"author"`
 	Body      *string          `json:"body"`
 }
@@ -506,7 +508,7 @@ func (q *DBQuerier) ShowThread(ctx context.Context, boardID int32, threadID int)
 	ctx = context.WithValue(ctx, "pggen_query_name", "ShowThread")
 	row := q.conn.QueryRow(ctx, showThreadSQL, boardID, threadID)
 	var item ShowThreadRow
-	if err := row.Scan(&item.ThreadID, &item.CreatedAt, &item.BumpedAt, &item.Author, &item.Body); err != nil {
+	if err := row.Scan(&item.ThreadID, &item.CreatedAt, &item.BumpedAt, &item.Subject, &item.Author, &item.Body); err != nil {
 		return item, fmt.Errorf("query ShowThread: %w", err)
 	}
 	return item, nil
@@ -521,7 +523,7 @@ func (q *DBQuerier) ShowThreadBatch(batch genericBatch, boardID int32, threadID 
 func (q *DBQuerier) ShowThreadScan(results pgx.BatchResults) (ShowThreadRow, error) {
 	row := results.QueryRow()
 	var item ShowThreadRow
-	if err := row.Scan(&item.ThreadID, &item.CreatedAt, &item.BumpedAt, &item.Author, &item.Body); err != nil {
+	if err := row.Scan(&item.ThreadID, &item.CreatedAt, &item.BumpedAt, &item.Subject, &item.Author, &item.Body); err != nil {
 		return item, fmt.Errorf("scan ShowThreadBatch row: %w", err)
 	}
 	return item, nil

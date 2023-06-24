@@ -17,7 +17,7 @@ WHERE slug = pggen.arg('slug')
 ;
 
 -- name: ListActiveBoardThreads :many
-SELECT threads.thread_id, threads.created_at, threads.bumped_at, posts.author, posts.body
+SELECT threads.thread_id, threads.created_at, threads.bumped_at, threads.subject, posts.author, posts.body
 FROM threads
 -- join the thread post:
 INNER JOIN posts
@@ -47,7 +47,7 @@ AND threads.thread_id = ANY (pggen.arg('thread_ids')::BIGINT[])
 ;
 
 -- name: ShowThread :one
-SELECT threads.thread_id, threads.created_at, threads.bumped_at, posts.author, posts.body
+SELECT threads.thread_id, threads.created_at, threads.bumped_at, threads.subject, posts.author, posts.body
 FROM threads
 -- join the thread post:
 INNER JOIN posts

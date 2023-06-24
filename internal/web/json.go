@@ -8,7 +8,7 @@ import (
 	"go.albinodrought.com/creamy-board/internal/repo"
 )
 
-func unhandled(w http.ResponseWriter) {
+func jsonUnhandled(w http.ResponseWriter) {
 	http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 }
 
@@ -20,7 +20,7 @@ func (wp *JSONWebPortal) ListBoards(w http.ResponseWriter, r *http.Request) {
 	boards, err := wp.Repo.ListBoards(r.Context())
 	if err != nil {
 		log.Warnf("failed to list boards: %v", err)
-		unhandled(w)
+		jsonUnhandled(w)
 		return
 	}
 
@@ -28,35 +28,23 @@ func (wp *JSONWebPortal) ListBoards(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(&boards)
 }
 
-func (wp *JSONWebPortal) ShowBoard(w http.ResponseWriter, r *http.Request, boardSlug string) {
-	board, err := wp.Repo.ShowBoard(r.Context(), boardSlug)
-	if err != nil {
-		log.Warnf("failed to show board %v: %v", boardSlug, err)
-		unhandled(w) // todo: could be 404 (boardslug)
-		return
-	}
-
-	w.Header().Add("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(&board)
-}
-
 func (wp *JSONWebPortal) ListBoardThreads(w http.ResponseWriter, r *http.Request, boardSlug string, page int) {
-	recentThreads, err := wp.Repo.ListBoardThreads(r.Context(), boardSlug, page)
+	boardRecentThreads, err := wp.Repo.ShowBoardListRecenthreads(r.Context(), boardSlug, page)
 	if err != nil {
 		log.Warnf("failed to list board %v threads: %v", boardSlug, err)
-		unhandled(w) // todo: could be 404 (boardslug)
+		jsonUnhandled(w) // todo: could be 404 (boardslug)
 		return
 	}
 
 	w.Header().Add("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(&recentThreads)
+	json.NewEncoder(w).Encode(&boardRecentThreads)
 }
 
 func (wp *JSONWebPortal) ShowThread(w http.ResponseWriter, r *http.Request, boardSlug string, threadID int) {
 	fullThread, err := wp.Repo.ShowThread(r.Context(), boardSlug, threadID)
 	if err != nil {
 		log.Warnf("failed to show board %v thread %v: %v", boardSlug, threadID, err)
-		unhandled(w) // todo: could be 404 (bnoardSlug, threadID)
+		jsonUnhandled(w) // todo: could be 404 (bnoardSlug, threadID)
 		return
 	}
 

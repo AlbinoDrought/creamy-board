@@ -12,6 +12,7 @@ type Thread struct {
 	ID        uint64 `json:"id"`
 	CreatedAt string `json:"created_at"`
 	BumpedAt  string `json:"bumped_at"`
+	Subject   string `json:"subject"`
 }
 
 type Post struct {
@@ -27,15 +28,24 @@ type RecentThread struct {
 	RecentPosts []Post `json:"recent_posts"`
 }
 
+type BoardRecentThreads struct {
+	Board         Board          `json:"board"`
+	RecentThreads []RecentThread `json:"recent_threads"`
+}
+
 type FullThread struct {
 	Thread   Thread `json:"thread"`
 	MainPost Post   `json:"main_post"`
 	AllPosts []Post `json:"all_posts"`
 }
 
+type BoardFullThread struct {
+	Board      Board      `json:"board"`
+	FullThread FullThread `json:"full_thread"`
+}
+
 type CreamyBoard interface {
 	ListBoards(ctx context.Context) ([]Board, error)
-	ShowBoard(ctx context.Context, boardSlug string) (*Board, error)
-	ListBoardThreads(ctx context.Context, boardSlug string, page int) ([]RecentThread, error)
-	ShowThread(ctx context.Context, boardSlug string, threadID int) (*FullThread, error)
+	ShowBoardListRecenthreads(ctx context.Context, boardSlug string, page int) (*BoardRecentThreads, error)
+	ShowThread(ctx context.Context, boardSlug string, threadID int) (*BoardFullThread, error)
 }

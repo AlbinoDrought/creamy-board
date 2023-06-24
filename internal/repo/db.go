@@ -2,6 +2,7 @@ package repo
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"go.albinodrought.com/creamy-board/internal/db/queries"
@@ -23,6 +24,7 @@ func recentThreadFromActive(rt *RecentThread, row queries.ListActiveBoardThreads
 	rt.Thread.ID = uint64(*row.ThreadID)
 	rt.Thread.CreatedAt = row.CreatedAt.Time.Format(time.RFC3339)
 	rt.Thread.BumpedAt = row.BumpedAt.Time.Format(time.RFC3339)
+	rt.Thread.Subject = row.Subject.String
 
 	rt.MainPost.ID = rt.Thread.ID
 	rt.MainPost.CreatedAt = rt.Thread.CreatedAt
@@ -44,6 +46,7 @@ func fullThreadFromShow(ft *FullThread, row queries.ShowThreadRow) {
 	ft.Thread.ID = uint64(*row.ThreadID)
 	ft.Thread.CreatedAt = row.CreatedAt.Time.Format(time.RFC3339)
 	ft.Thread.BumpedAt = row.BumpedAt.Time.Format(time.RFC3339)
+	ft.Thread.Subject = row.Subject.String
 
 	ft.MainPost.ID = ft.Thread.ID
 	ft.MainPost.CreatedAt = ft.Thread.CreatedAt
@@ -79,19 +82,13 @@ func (r *DBRepo) ListBoards(ctx context.Context) ([]Board, error) {
 	return boards, nil
 }
 
-func (r *DBRepo) ShowBoard(ctx context.Context, boardSlug string) (*Board, error) {
-	dbBoard, err := r.Querier.ShowBoardFromSlug(ctx, boardSlug)
-	if err != nil {
-		return nil, err
+var ErrPageInvalid = errors.New("page invalid, must be 1 or greater")
+
+func (r *DBRepo) ShowBoardListRecenthreads(ctx context.Context, boardSlug string, page int) (*BoardRecentThreads, error) {
+	if page < 0 {
+		return nil, ErrPageInvalid
 	}
 
-	board := Board{}
-	boardFromShow(&board, dbBoard)
-
-	return &board, nil
-}
-
-func (r *DBRepo) ListBoardThreads(ctx context.Context, boardSlug string, page int) ([]RecentThread, error) {
 	dbBoard, err := r.Querier.ShowBoardFromSlug(ctx, boardSlug)
 	if err != nil {
 		return nil, err
@@ -126,6 +123,9 @@ func (r *DBRepo) ListBoardThreads(ctx context.Context, boardSlug string, page in
 		dbRecentPostsByThreads[*dbRecentPost.ThreadID] = dbRecentPostsByThread
 	}
 
+	board := Board{}
+	boardFromShow(&board, dbBoard)
+
 	recentThreads := make([]RecentThread, len(dbThreads))
 	for i := range dbThreads {
 		recentThreadFromActive(&recentThreads[i], dbThreads[i])
@@ -137,10 +137,13 @@ func (r *DBRepo) ListBoardThreads(ctx context.Context, boardSlug string, page in
 		}
 	}
 
-	return recentThreads, nil
+	return &BoardRecentThreads{
+		Board:         board,
+		RecentThreads: recentThreads,
+	}, nil
 }
 
-func (r *DBRepo) ShowThread(ctx context.Context, boardSlug string, threadID int) (*FullThread, error) {
+func (r *DBRepo) ShowThread(ctx context.Context, boardSlug string, threadID int) (*BoardFullThread, error) {
 	dbBoard, err := r.Querier.ShowBoardFromSlug(ctx, boardSlug)
 	if err != nil {
 		return nil, err
@@ -156,11 +159,17 @@ func (r *DBRepo) ShowThread(ctx context.Context, boardSlug string, threadID int)
 		return nil, err
 	}
 
+	board := Board{}
+	boardFromShow(&board, dbBoard)
+
 	fullThread := FullThread{}
 	fullThreadFromShow(&fullThread, dbThread)
 	fullThreadLoadAllPosts(&fullThread, dbPosts)
 
-	return &fullThread, nil
+	return &BoardFullThread{
+		Board:      board,
+		FullThread: fullThread,
+	}, nil
 }
 
 var _ CreamyBoard = &DBRepo{}
