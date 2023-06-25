@@ -12,7 +12,6 @@ type Thread struct {
 	ID        uint64 `json:"id"`
 	CreatedAt string `json:"created_at"`
 	BumpedAt  string `json:"bumped_at"`
-	Subject   string `json:"subject"`
 }
 
 type File struct {
@@ -28,6 +27,7 @@ type File struct {
 type Post struct {
 	ID        uint64 `json:"id"`
 	CreatedAt string `json:"created_at"`
+	Subject   string `json:"subject"`
 	Author    string `json:"author"`
 	Body      string `json:"body"`
 	Files     []File `json:"files"`

@@ -17,7 +17,7 @@ WHERE slug = pggen.arg('slug')
 ;
 
 -- name: ListActiveBoardThreads :many
-SELECT threads.thread_id, threads.created_at, threads.bumped_at, threads.subject, posts.author, posts.body
+SELECT threads.thread_id, threads.created_at, threads.bumped_at, posts.subject, posts.author, posts.body
 FROM threads
 -- join the thread post:
 INNER JOIN posts
@@ -31,10 +31,10 @@ OFFSET pggen.arg('offset')
 ;
 
 -- name: ListThreadRecentPosts :many
-SELECT threads.thread_id, recent_posts.post_id, recent_posts.created_at, recent_posts.author, recent_posts.body
+SELECT threads.thread_id, recent_posts.post_id, recent_posts.created_at, recent_posts.subject, recent_posts.author, recent_posts.body
 FROM threads
 JOIN LATERAL (
-  SELECT post_id, created_at, author, body
+  SELECT post_id, created_at, subject, author, body
   FROM posts
   WHERE posts.board_id = threads.board_id
   AND posts.thread_id = threads.thread_id
@@ -47,7 +47,7 @@ AND threads.thread_id = ANY (pggen.arg('thread_ids')::BIGINT[])
 ;
 
 -- name: ShowThread :one
-SELECT threads.thread_id, threads.created_at, threads.bumped_at, threads.subject, posts.author, posts.body
+SELECT threads.thread_id, threads.created_at, threads.bumped_at, posts.subject, posts.author, posts.body
 FROM threads
 -- join the thread post:
 INNER JOIN posts
@@ -59,7 +59,7 @@ AND threads.thread_id = pggen.arg('thread_id')
 ;
 
 -- name: ListThreadPosts :many
-SELECT post_id, created_at, author, body
+SELECT post_id, created_at, subject, author, body
 FROM posts
 WHERE posts.board_id = pggen.arg('board_id')
 AND posts.thread_id = pggen.arg('thread_id')

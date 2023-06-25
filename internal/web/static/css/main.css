@@ -49,7 +49,7 @@ hr {
   margin-bottom: .25em;
   word-wrap: break-word;
 }
-.thread__subject {
+.post__subject {
   font-weight: bold;
   color: var(--highlight2);
 }

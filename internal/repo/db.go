@@ -41,6 +41,7 @@ func fileFromListThread(f *File, row queries.ListThreadFilesRow) {
 func postFromRecentPost(p *Post, row queries.ListThreadRecentPostsRow) {
 	p.ID = uint64(*row.PostID)
 	p.CreatedAt = row.CreatedAt.Time.Format(time.RFC3339)
+	p.Subject = row.Subject.String
 	p.Author = row.Author.String
 	p.Body = *row.Body
 }
@@ -48,6 +49,7 @@ func postFromRecentPost(p *Post, row queries.ListThreadRecentPostsRow) {
 func postFromThreadPost(p *Post, row queries.ListThreadPostsRow) {
 	p.ID = uint64(*row.PostID)
 	p.CreatedAt = row.CreatedAt.Time.Format(time.RFC3339)
+	p.Subject = row.Subject.String
 	p.Author = row.Author.String
 	p.Body = *row.Body
 }
@@ -56,11 +58,11 @@ func recentThreadFromActive(rt *RecentThread, row queries.ListActiveBoardThreads
 	rt.Thread.ID = uint64(*row.ThreadID)
 	rt.Thread.CreatedAt = row.CreatedAt.Time.Format(time.RFC3339)
 	rt.Thread.BumpedAt = row.BumpedAt.Time.Format(time.RFC3339)
-	rt.Thread.Subject = row.Subject.String
 
 	rt.MainPost.ID = rt.Thread.ID
 	rt.MainPost.CreatedAt = rt.Thread.CreatedAt
 	rt.MainPost.Author = row.Author.String
+	rt.MainPost.Subject = row.Subject.String
 	rt.MainPost.Body = *row.Body
 }
 
@@ -68,10 +70,10 @@ func fullThreadFromShow(ft *FullThread, row queries.ShowThreadRow) {
 	ft.Thread.ID = uint64(*row.ThreadID)
 	ft.Thread.CreatedAt = row.CreatedAt.Time.Format(time.RFC3339)
 	ft.Thread.BumpedAt = row.BumpedAt.Time.Format(time.RFC3339)
-	ft.Thread.Subject = row.Subject.String
 
 	ft.MainPost.ID = ft.Thread.ID
 	ft.MainPost.CreatedAt = ft.Thread.CreatedAt
+	ft.MainPost.Subject = row.Subject.String
 	ft.MainPost.Author = row.Author.String
 	ft.MainPost.Body = *row.Body
 }

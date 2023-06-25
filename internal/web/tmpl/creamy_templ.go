@@ -63,8 +63,8 @@ func linkPostQuote(board *repo.Board, thread *repo.Thread, post *repo.Post) temp
 func textBoard(board *repo.Board) string {
 	return fmt.Sprintf("/%v/ - %v", board.Slug, board.Title)
 }
-func textThread(board *repo.Board, thread *repo.Thread) string {
-	return fmt.Sprintf("/%v/ - %v", board.Slug, thread.Subject)
+func textThread(board *repo.Board, post *repo.Post) string {
+	return fmt.Sprintf("/%v/ - %v", board.Slug, post.Subject)
 }
 
 // components:
@@ -82,6 +82,49 @@ func postHead(board *repo.Board, thread *repo.Thread, post *repo.Post) templ.Com
 			var_1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
+		// If
+		if post.Subject != "" {
+			// Element (standard)
+			_, err = templBuffer.WriteString("<span")
+			if err != nil {
+				return err
+			}
+			// Element Attributes
+			_, err = templBuffer.WriteString(" class=\"post__subject\"")
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString(">")
+			if err != nil {
+				return err
+			}
+			// StringExpression
+			var var_2 string = post.Subject
+			_, err = templBuffer.WriteString(templ.EscapeString(var_2))
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString("</span>")
+			if err != nil {
+				return err
+			}
+			// Element (void)
+			_, err = templBuffer.WriteString("<wbr>")
+			if err != nil {
+				return err
+			}
+			// Whitespace (normalised)
+			_, err = templBuffer.WriteString(` `)
+			if err != nil {
+				return err
+			}
+			// Text
+			var_3 := `&nbsp;`
+			_, err = templBuffer.WriteString(var_3)
+			if err != nil {
+				return err
+			}
+		}
 		// Element (standard)
 		_, err = templBuffer.WriteString("<span")
 		if err != nil {
@@ -97,8 +140,8 @@ func postHead(board *repo.Board, thread *repo.Thread, post *repo.Post) templ.Com
 			return err
 		}
 		// StringExpression
-		var var_2 string = post.Author
-		_, err = templBuffer.WriteString(templ.EscapeString(var_2))
+		var var_4 string = post.Author
+		_, err = templBuffer.WriteString(templ.EscapeString(var_4))
 		if err != nil {
 			return err
 		}
@@ -112,8 +155,8 @@ func postHead(board *repo.Board, thread *repo.Thread, post *repo.Post) templ.Com
 			return err
 		}
 		// Text
-		var_3 := `&nbsp;`
-		_, err = templBuffer.WriteString(var_3)
+		var_5 := `&nbsp;`
+		_, err = templBuffer.WriteString(var_5)
 		if err != nil {
 			return err
 		}
@@ -132,8 +175,8 @@ func postHead(board *repo.Board, thread *repo.Thread, post *repo.Post) templ.Com
 			return err
 		}
 		// StringExpression
-		var var_4 string = post.CreatedAt
-		_, err = templBuffer.WriteString(templ.EscapeString(var_4))
+		var var_6 string = post.CreatedAt
+		_, err = templBuffer.WriteString(templ.EscapeString(var_6))
 		if err != nil {
 			return err
 		}
@@ -147,8 +190,8 @@ func postHead(board *repo.Board, thread *repo.Thread, post *repo.Post) templ.Com
 			return err
 		}
 		// Text
-		var_5 := `&nbsp;`
-		_, err = templBuffer.WriteString(var_5)
+		var_7 := `&nbsp;`
+		_, err = templBuffer.WriteString(var_7)
 		if err != nil {
 			return err
 		}
@@ -170,8 +213,8 @@ func postHead(board *repo.Board, thread *repo.Thread, post *repo.Post) templ.Com
 		if err != nil {
 			return err
 		}
-		var var_6 templ.SafeURL = linkPostShow(board, thread, post)
-		_, err = templBuffer.WriteString(templ.EscapeString(string(var_6)))
+		var var_8 templ.SafeURL = linkPostShow(board, thread, post)
+		_, err = templBuffer.WriteString(templ.EscapeString(string(var_8)))
 		if err != nil {
 			return err
 		}
@@ -184,8 +227,8 @@ func postHead(board *repo.Board, thread *repo.Thread, post *repo.Post) templ.Com
 			return err
 		}
 		// Text
-		var_7 := `No.`
-		_, err = templBuffer.WriteString(var_7)
+		var_9 := `No.`
+		_, err = templBuffer.WriteString(var_9)
 		if err != nil {
 			return err
 		}
@@ -194,8 +237,8 @@ func postHead(board *repo.Board, thread *repo.Thread, post *repo.Post) templ.Com
 			return err
 		}
 		// Text
-		var_8 := `&nbsp;`
-		_, err = templBuffer.WriteString(var_8)
+		var_10 := `&nbsp;`
+		_, err = templBuffer.WriteString(var_10)
 		if err != nil {
 			return err
 		}
@@ -217,8 +260,8 @@ func postHead(board *repo.Board, thread *repo.Thread, post *repo.Post) templ.Com
 		if err != nil {
 			return err
 		}
-		var var_9 templ.SafeURL = linkPostQuote(board, thread, post)
-		_, err = templBuffer.WriteString(templ.EscapeString(string(var_9)))
+		var var_11 templ.SafeURL = linkPostQuote(board, thread, post)
+		_, err = templBuffer.WriteString(templ.EscapeString(string(var_11)))
 		if err != nil {
 			return err
 		}
@@ -231,8 +274,8 @@ func postHead(board *repo.Board, thread *repo.Thread, post *repo.Post) templ.Com
 			return err
 		}
 		// StringExpression
-		var var_10 string = fmt.Sprintf("%v", post.ID)
-		_, err = templBuffer.WriteString(templ.EscapeString(var_10))
+		var var_12 string = fmt.Sprintf("%v", post.ID)
+		_, err = templBuffer.WriteString(templ.EscapeString(var_12))
 		if err != nil {
 			return err
 		}
@@ -255,46 +298,11 @@ func threadHead(board *repo.Board, thread *repo.Thread, post *repo.Post, inThrea
 			defer templ.ReleaseBuffer(templBuffer)
 		}
 		ctx = templ.InitializeContext(ctx)
-		var_11 := templ.GetChildren(ctx)
-		if var_11 == nil {
-			var_11 = templ.NopComponent
+		var_13 := templ.GetChildren(ctx)
+		if var_13 == nil {
+			var_13 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		// Element (standard)
-		_, err = templBuffer.WriteString("<span")
-		if err != nil {
-			return err
-		}
-		// Element Attributes
-		_, err = templBuffer.WriteString(" class=\"thread__subject\"")
-		if err != nil {
-			return err
-		}
-		_, err = templBuffer.WriteString(">")
-		if err != nil {
-			return err
-		}
-		// StringExpression
-		var var_12 string = thread.Subject
-		_, err = templBuffer.WriteString(templ.EscapeString(var_12))
-		if err != nil {
-			return err
-		}
-		_, err = templBuffer.WriteString("</span>")
-		if err != nil {
-			return err
-		}
-		// Element (void)
-		_, err = templBuffer.WriteString("<wbr>")
-		if err != nil {
-			return err
-		}
-		// Text
-		var_13 := `&nbsp;`
-		_, err = templBuffer.WriteString(var_13)
-		if err != nil {
-			return err
-		}
 		// TemplElement
 		err = postHead(board, thread, post).Render(ctx, templBuffer)
 		if err != nil {
@@ -1446,7 +1454,7 @@ func ShowFullThread(bft *repo.BoardFullThread) templ.Component {
 			}
 			return err
 		})
-		err = page(textThread(&bft.Board, &bft.FullThread.Thread), bft.FullThread.MainPost.Body).Render(templ.WithChildren(ctx, var_47), templBuffer)
+		err = page(textThread(&bft.Board, &bft.FullThread.MainPost), bft.FullThread.MainPost.Body).Render(templ.WithChildren(ctx, var_47), templBuffer)
 		if err != nil {
 			return err
 		}

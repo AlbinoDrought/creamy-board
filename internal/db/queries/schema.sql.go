@@ -366,7 +366,7 @@ func (q *DBQuerier) ShowBoardFromSlugScan(results pgx.BatchResults) (ShowBoardFr
 	return item, nil
 }
 
-const listActiveBoardThreadsSQL = `SELECT threads.thread_id, threads.created_at, threads.bumped_at, threads.subject, posts.author, posts.body
+const listActiveBoardThreadsSQL = `SELECT threads.thread_id, threads.created_at, threads.bumped_at, posts.subject, posts.author, posts.body
 FROM threads
 -- join the thread post:
 INNER JOIN posts
@@ -442,10 +442,10 @@ func (q *DBQuerier) ListActiveBoardThreadsScan(results pgx.BatchResults) ([]List
 	return items, err
 }
 
-const listThreadRecentPostsSQL = `SELECT threads.thread_id, recent_posts.post_id, recent_posts.created_at, recent_posts.author, recent_posts.body
+const listThreadRecentPostsSQL = `SELECT threads.thread_id, recent_posts.post_id, recent_posts.created_at, recent_posts.subject, recent_posts.author, recent_posts.body
 FROM threads
 JOIN LATERAL (
-  SELECT post_id, created_at, author, body
+  SELECT post_id, created_at, subject, author, body
   FROM posts
   WHERE posts.board_id = threads.board_id
   AND posts.thread_id = threads.thread_id
@@ -461,6 +461,7 @@ type ListThreadRecentPostsRow struct {
 	ThreadID  *int             `json:"thread_id"`
 	PostID    *int             `json:"post_id"`
 	CreatedAt pgtype.Timestamp `json:"created_at"`
+	Subject   pgtype.Varchar   `json:"subject"`
 	Author    pgtype.Varchar   `json:"author"`
 	Body      *string          `json:"body"`
 }
@@ -476,7 +477,7 @@ func (q *DBQuerier) ListThreadRecentPosts(ctx context.Context, boardID int32, th
 	items := []ListThreadRecentPostsRow{}
 	for rows.Next() {
 		var item ListThreadRecentPostsRow
-		if err := rows.Scan(&item.ThreadID, &item.PostID, &item.CreatedAt, &item.Author, &item.Body); err != nil {
+		if err := rows.Scan(&item.ThreadID, &item.PostID, &item.CreatedAt, &item.Subject, &item.Author, &item.Body); err != nil {
 			return nil, fmt.Errorf("scan ListThreadRecentPosts row: %w", err)
 		}
 		items = append(items, item)
@@ -502,7 +503,7 @@ func (q *DBQuerier) ListThreadRecentPostsScan(results pgx.BatchResults) ([]ListT
 	items := []ListThreadRecentPostsRow{}
 	for rows.Next() {
 		var item ListThreadRecentPostsRow
-		if err := rows.Scan(&item.ThreadID, &item.PostID, &item.CreatedAt, &item.Author, &item.Body); err != nil {
+		if err := rows.Scan(&item.ThreadID, &item.PostID, &item.CreatedAt, &item.Subject, &item.Author, &item.Body); err != nil {
 			return nil, fmt.Errorf("scan ListThreadRecentPostsBatch row: %w", err)
 		}
 		items = append(items, item)
@@ -513,7 +514,7 @@ func (q *DBQuerier) ListThreadRecentPostsScan(results pgx.BatchResults) ([]ListT
 	return items, err
 }
 
-const showThreadSQL = `SELECT threads.thread_id, threads.created_at, threads.bumped_at, threads.subject, posts.author, posts.body
+const showThreadSQL = `SELECT threads.thread_id, threads.created_at, threads.bumped_at, posts.subject, posts.author, posts.body
 FROM threads
 -- join the thread post:
 INNER JOIN posts
@@ -559,7 +560,7 @@ func (q *DBQuerier) ShowThreadScan(results pgx.BatchResults) (ShowThreadRow, err
 	return item, nil
 }
 
-const listThreadPostsSQL = `SELECT post_id, created_at, author, body
+const listThreadPostsSQL = `SELECT post_id, created_at, subject, author, body
 FROM posts
 WHERE posts.board_id = $1
 AND posts.thread_id = $2
@@ -570,6 +571,7 @@ ORDER BY posts.post_id
 type ListThreadPostsRow struct {
 	PostID    *int             `json:"post_id"`
 	CreatedAt pgtype.Timestamp `json:"created_at"`
+	Subject   pgtype.Varchar   `json:"subject"`
 	Author    pgtype.Varchar   `json:"author"`
 	Body      *string          `json:"body"`
 }
@@ -585,7 +587,7 @@ func (q *DBQuerier) ListThreadPosts(ctx context.Context, boardID int32, threadID
 	items := []ListThreadPostsRow{}
 	for rows.Next() {
 		var item ListThreadPostsRow
-		if err := rows.Scan(&item.PostID, &item.CreatedAt, &item.Author, &item.Body); err != nil {
+		if err := rows.Scan(&item.PostID, &item.CreatedAt, &item.Subject, &item.Author, &item.Body); err != nil {
 			return nil, fmt.Errorf("scan ListThreadPosts row: %w", err)
 		}
 		items = append(items, item)
@@ -611,7 +613,7 @@ func (q *DBQuerier) ListThreadPostsScan(results pgx.BatchResults) ([]ListThreadP
 	items := []ListThreadPostsRow{}
 	for rows.Next() {
 		var item ListThreadPostsRow
-		if err := rows.Scan(&item.PostID, &item.CreatedAt, &item.Author, &item.Body); err != nil {
+		if err := rows.Scan(&item.PostID, &item.CreatedAt, &item.Subject, &item.Author, &item.Body); err != nil {
 			return nil, fmt.Errorf("scan ListThreadPostsBatch row: %w", err)
 		}
 		items = append(items, item)

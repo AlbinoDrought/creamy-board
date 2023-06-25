@@ -53,13 +53,17 @@ func linkPostQuote(board *repo.Board, thread *repo.Thread, post *repo.Post) temp
 func textBoard(board *repo.Board) string {
 	return fmt.Sprintf("/%v/ - %v", board.Slug, board.Title)
 }
-func textThread(board *repo.Board, thread *repo.Thread) string {
-	return fmt.Sprintf("/%v/ - %v", board.Slug, thread.Subject)
+func textThread(board *repo.Board, post *repo.Post) string {
+	return fmt.Sprintf("/%v/ - %v", board.Slug, post.Subject)
 }
 
 // components:
 
 templ postHead(board *repo.Board, thread *repo.Thread, post *repo.Post) {
+	if post.Subject != "" {
+		<span class="post__subject">{ post.Subject }</span><wbr />
+		&nbsp;
+	}
 	<span class="post__author">{ post.Author }</span><wbr />
 	&nbsp;
 	<span class="post__date">{ post.CreatedAt }</span><wbr />
@@ -70,8 +74,6 @@ templ postHead(board *repo.Board, thread *repo.Thread, post *repo.Post) {
 }
 
 templ threadHead(board *repo.Board, thread *repo.Thread, post *repo.Post, inThread bool) {
-	<span class="thread__subject">{ thread.Subject }</span><wbr />
-	&nbsp;
 	@postHead(board, thread, post)
 	&nbsp;
 	if (!inThread) {
@@ -201,7 +203,7 @@ templ ShowBoardAndRecents(brt *repo.BoardRecentThreads) {
 }
 
 templ ShowFullThread(bft *repo.BoardFullThread) {
-	@page(textThread(&bft.Board, &bft.FullThread.Thread), bft.FullThread.MainPost.Body) {
+	@page(textThread(&bft.Board, &bft.FullThread.MainPost), bft.FullThread.MainPost.Body) {
 		@wrapperBoard(&bft.Board) {
 			@threadFull(&bft.Board, &bft.FullThread.Thread, &bft.FullThread.MainPost, bft.FullThread.AllPosts, true)
 		}

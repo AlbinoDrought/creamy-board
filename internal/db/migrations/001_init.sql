@@ -16,7 +16,6 @@ CREATE TABLE threads (
 , thread_id BIGINT NOT NULL
 , created_at TIMESTAMP NOT NULL DEFAULT NOW()
 , bumped_at TIMESTAMP NOT NULL DEFAULT NOW()
-, subject VARCHAR(100) NOT NULL DEFAULT ''
 , PRIMARY KEY (board_id, thread_id)
 , FOREIGN KEY (board_id) REFERENCES boards (board_id) ON DELETE CASCADE
 );
@@ -28,6 +27,7 @@ CREATE TABLE posts (
 , thread_id BIGINT NOT NULL
 , post_id BIGINT NOT NULL
 , created_at TIMESTAMP NOT NULL DEFAULT NOW()
+, subject VARCHAR(100) NOT NULL DEFAULT ''
 , author VARCHAR(50) NOT NULL DEFAULT ''
 , body TEXT NOT NULL DEFAULT ''
 , PRIMARY KEY (board_id, thread_id, post_id)
@@ -62,13 +62,13 @@ INSERT INTO boards (slug, title, tagline) VALUES
 INSERT INTO board_post_counters (board_id, next_post_id) VALUES
   (1, 4)
 ;
-INSERT INTO threads (board_id, thread_id, subject) VALUES
-  (1, 1, 'Welcome to Creamy Board')
+INSERT INTO threads (board_id, thread_id) VALUES
+  (1, 1)
 ;
-INSERT INTO posts (board_id, thread_id, post_id, author, body) VALUES
-  (1, 1, 1, 'Migrator', E'Test thread body please ignore\n\n(pic related)')
-, (1, 1, 2, 'Migrator', 'chicken chicken dog')
-, (1, 1, 3, 'Meowgrator', 'cat')
+INSERT INTO posts (board_id, thread_id, post_id, subject, author, body) VALUES
+  (1, 1, 1, 'Welcome to Creamy Board', 'Migrator', E'Test thread body please ignore\n\n(pic related)')
+, (1, 1, 2, '', 'Migrator', 'chicken chicken dog')
+, (1, 1, 3, 'meow', 'Meowgrator', 'cat')
 ;
 
 INSERT INTO files (board_id, thread_id, post_id, idx, path, extension, mimetype, bytes, original_name) VALUES
