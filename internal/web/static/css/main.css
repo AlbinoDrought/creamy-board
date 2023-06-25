@@ -83,6 +83,10 @@ hr {
   max-width: 300px;
 }
 
+.post__files--multi+.post__body {
+  clear: both;
+}
+
 .file__img {
   max-width: 300px;
   max-height: 250px;

@@ -67,13 +67,14 @@ INSERT INTO threads (board_id, thread_id, subject) VALUES
 ;
 INSERT INTO posts (board_id, thread_id, post_id, author, body) VALUES
   (1, 1, 1, 'Migrator', E'Test thread body please ignore\n\n(pic related)')
-, (1, 1, 2, 'Migrator', 'chicken dog')
+, (1, 1, 2, 'Migrator', 'chicken chicken dog')
 , (1, 1, 3, 'Meowgrator', 'cat')
 ;
 
 INSERT INTO files (board_id, thread_id, post_id, idx, path, extension, mimetype, bytes, original_name) VALUES
   (1, 1, 1, 0, 'test_llama.jpg', 'jpg', 'image/jpeg', 101036, 'llama.jpg')
 , (1, 1, 2, 0, 'test_chimkin.jpg', 'jpg', 'image/jpeg', 179262, 'chimkin.jpg')
-, (1, 1, 2, 1, 'test_dog.jpg', 'jpg', 'image/jpeg', 54955, 'dog.jpg')
+, (1, 1, 2, 1, 'test_chimkin2.jpg', 'jpg', 'image/jpeg', 179262, 'chimkin2.jpg')
+, (1, 1, 2, 2, 'test_dog.jpg', 'jpg', 'image/jpeg', 54955, 'notchimkin.jpg')
 , (1, 1, 3, 0, 'test_cat.jpg', 'jpg', 'image/jpeg', 84949, 'cat.jpg')
 ;
