@@ -91,3 +91,53 @@ AND thread_id = pggen.arg('thread_id')
 AND post_id = pggen.arg('post_id')
 AND idx = pggen.arg('idx')
 ;
+
+-- name: SubmitThread :one
+WITH
+thread AS (
+  INSERT INTO threads (board_id, thread_id) VALUES
+    (pggen.arg('board_id'), board_post_seq_nextval(pggen.arg('board_id')))
+  RETURNING thread_id
+),
+post AS (
+  INSERT INTO posts (board_id, thread_id, post_id, subject, author, body) VALUES
+    (pggen.arg('board_id'), (SELECT thread_id FROM thread), (SELECT thread_id FROM thread), pggen.arg('subject'), pggen.arg('author'), pggen.arg('body'))
+  RETURNING post_id
+),
+files_input AS (
+  SELECT pggen.arg('board_id') AS board_id, (SELECT thread_id FROM thread) AS thread_id, (SELECT thread_id FROM thread) AS post_id, idx, path, extension, mimetype, bytes, original_name
+  FROM unnest(pggen.arg('partial_files')::partial_file[])
+),
+files AS (
+  INSERT INTO files (board_id, thread_id, post_id, idx, path, extension, mimetype, bytes, original_name)
+  SELECT *
+  FROM files_input
+)
+SELECT thread_id FROM thread
+;
+
+-- name: SubmitPost :one
+WITH
+post AS (
+  INSERT INTO posts (board_id, thread_id, post_id, subject, author, body) VALUES
+    (pggen.arg('board_id'), pggen.arg('thread_id'), board_post_seq_nextval(pggen.arg('board_id')), pggen.arg('subject'), pggen.arg('author'), pggen.arg('body'))
+  RETURNING post_id
+),
+files_input AS (
+  SELECT pggen.arg('board_id') AS board_id, pggen.arg('thread_id'), (SELECT post_id FROM post) AS post_id, idx, path, extension, mimetype, bytes, original_name
+  FROM unnest(pggen.arg('partial_files')::partial_file[])
+),
+files AS (
+  INSERT INTO files (board_id, thread_id, post_id, idx, path, extension, mimetype, bytes, original_name)
+  SELECT *
+  FROM files_input
+)
+SELECT post_id FROM post
+;
+
+-- the above SubmitPost query fails when no files are submitted, not sure how to hack around it, so just using diff query instead
+-- name: SubmitPostNoFiles :one
+INSERT INTO posts (board_id, thread_id, post_id, subject, author, body) VALUES
+    (pggen.arg('board_id'), pggen.arg('thread_id'), board_post_seq_nextval(pggen.arg('board_id')), pggen.arg('subject'), pggen.arg('author'), pggen.arg('body'))
+  RETURNING post_id
+;

@@ -153,6 +153,40 @@ templ threadFull(board *repo.Board, thread *repo.Thread, main *repo.Post, other 
 	</div>
 }
 
+templ postForm() {
+	<form method="POST" enctype="multipart/form-data">
+		<table class="form">
+			<tbody>
+				<tr>
+					<th><label for="author">Name</label></th>
+					<td><input type="text" id="author" name="author" /></td>
+				</tr>
+				<tr>
+					<th><label for="subject">Subject</label></th>
+					<td>
+						<input type="text" id="subject" name="subject" />
+						<button type="submit">Post</button>
+					</td>
+				</tr>
+				<tr>
+					<th>Comment</th>
+					<td>
+						<textarea name="body" rows="5" cols="27" />
+					</td>
+				</tr>
+				<tr>
+					<th><label for="file1">File</label></th>
+					<td>
+						<input type="file" id="file1" name="file1" />
+						<input type="file" id="file2" name="file2" />
+						<input type="file" id="file3" name="file2" />
+					</td>
+				</tr>
+			</tbody>
+		</table>
+	</form>
+}
+
 // wrappers:
 
 templ page(title string, description string) {
@@ -176,7 +210,6 @@ templ page(title string, description string) {
 templ wrapperBoard(board *repo.Board) {
 	<h1 class="board__title">{ textBoard(board) }</h1>
 	<h2 class="board__tag">{ board.Tagline }</h2>
-	<hr />
 	{ children... }
 }
 
@@ -195,6 +228,8 @@ templ ListBoards(boards []repo.Board) {
 templ ShowBoardAndRecents(brt *repo.BoardRecentThreads) {
 	@page(textBoard(&brt.Board), brt.Board.Tagline) {
 		@wrapperBoard(&brt.Board) {
+			@postForm()
+			<hr />
 			for _, thread := range brt.RecentThreads {
 				@threadFull(&brt.Board, &thread.Thread, &thread.MainPost, thread.RecentPosts, false)
 			}
@@ -205,6 +240,15 @@ templ ShowBoardAndRecents(brt *repo.BoardRecentThreads) {
 templ ShowFullThread(bft *repo.BoardFullThread) {
 	@page(textThread(&bft.Board, &bft.FullThread.MainPost), bft.FullThread.MainPost.Body) {
 		@wrapperBoard(&bft.Board) {
+			<div class="thread-return-container">
+				<div class="thread-return">
+					Posting mode: Reply
+					&nbsp;
+					<a href={ linkBoard(&bft.Board) }>[Return]</a>
+				</div>
+			</div>
+			@postForm()
+			<hr />
 			@threadFull(&bft.Board, &bft.FullThread.Thread, &bft.FullThread.MainPost, bft.FullThread.AllPosts, true)
 		}
 	}

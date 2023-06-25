@@ -85,6 +85,28 @@ type Querier interface {
 	ShowFileBatch(batch genericBatch, params ShowFileParams)
 	// ShowFileScan scans the result of an executed ShowFileBatch query.
 	ShowFileScan(results pgx.BatchResults) (ShowFileRow, error)
+
+	SubmitThread(ctx context.Context, params SubmitThreadParams) (*int, error)
+	// SubmitThreadBatch enqueues a SubmitThread query into batch to be executed
+	// later by the batch.
+	SubmitThreadBatch(batch genericBatch, params SubmitThreadParams)
+	// SubmitThreadScan scans the result of an executed SubmitThreadBatch query.
+	SubmitThreadScan(results pgx.BatchResults) (*int, error)
+
+	SubmitPost(ctx context.Context, params SubmitPostParams) (*int, error)
+	// SubmitPostBatch enqueues a SubmitPost query into batch to be executed
+	// later by the batch.
+	SubmitPostBatch(batch genericBatch, params SubmitPostParams)
+	// SubmitPostScan scans the result of an executed SubmitPostBatch query.
+	SubmitPostScan(results pgx.BatchResults) (*int, error)
+
+	// the above SubmitPost query fails when no files are submitted, not sure how to hack around it, so just using diff query instead
+	SubmitPostNoFiles(ctx context.Context, params SubmitPostNoFilesParams) (int, error)
+	// SubmitPostNoFilesBatch enqueues a SubmitPostNoFiles query into batch to be executed
+	// later by the batch.
+	SubmitPostNoFilesBatch(batch genericBatch, params SubmitPostNoFilesParams)
+	// SubmitPostNoFilesScan scans the result of an executed SubmitPostNoFilesBatch query.
+	SubmitPostNoFilesScan(results pgx.BatchResults) (int, error)
 }
 
 type DBQuerier struct {
@@ -192,7 +214,26 @@ func PrepareAllQueries(ctx context.Context, p preparer) error {
 	if _, err := p.Prepare(ctx, showFileSQL, showFileSQL); err != nil {
 		return fmt.Errorf("prepare query 'ShowFile': %w", err)
 	}
+	if _, err := p.Prepare(ctx, submitThreadSQL, submitThreadSQL); err != nil {
+		return fmt.Errorf("prepare query 'SubmitThread': %w", err)
+	}
+	if _, err := p.Prepare(ctx, submitPostSQL, submitPostSQL); err != nil {
+		return fmt.Errorf("prepare query 'SubmitPost': %w", err)
+	}
+	if _, err := p.Prepare(ctx, submitPostNoFilesSQL, submitPostNoFilesSQL); err != nil {
+		return fmt.Errorf("prepare query 'SubmitPostNoFiles': %w", err)
+	}
 	return nil
+}
+
+// PartialFile represents the Postgres composite type "partial_file".
+type PartialFile struct {
+	Idx          *int16         `json:"idx"`
+	Path         pgtype.Varchar `json:"path"`
+	Extension    pgtype.Varchar `json:"extension"`
+	Mimetype     pgtype.Varchar `json:"mimetype"`
+	Bytes        *int32         `json:"bytes"`
+	OriginalName pgtype.Varchar `json:"original_name"`
 }
 
 // typeResolver looks up the pgtype.ValueTranscoder by Postgres type name.
@@ -228,6 +269,110 @@ func (tr *typeResolver) setValue(vt pgtype.ValueTranscoder, val interface{}) pgt
 		panic(fmt.Sprintf("set ValueTranscoder %T to %+v: %s", vt, val, err))
 	}
 	return vt
+}
+
+type compositeField struct {
+	name       string                 // name of the field
+	typeName   string                 // Postgres type name
+	defaultVal pgtype.ValueTranscoder // default value to use
+}
+
+func (tr *typeResolver) newCompositeValue(name string, fields ...compositeField) pgtype.ValueTranscoder {
+	if _, val, ok := tr.findValue(name); ok {
+		return val
+	}
+	fs := make([]pgtype.CompositeTypeField, len(fields))
+	vals := make([]pgtype.ValueTranscoder, len(fields))
+	isBinaryOk := true
+	for i, field := range fields {
+		oid, val, ok := tr.findValue(field.typeName)
+		if !ok {
+			oid = unknownOID
+			val = field.defaultVal
+		}
+		isBinaryOk = isBinaryOk && oid != unknownOID
+		fs[i] = pgtype.CompositeTypeField{Name: field.name, OID: oid}
+		vals[i] = val
+	}
+	// Okay to ignore error because it's only thrown when the number of field
+	// names does not equal the number of ValueTranscoders.
+	typ, _ := pgtype.NewCompositeTypeValues(name, fs, vals)
+	if !isBinaryOk {
+		return textPreferrer{ValueTranscoder: typ, typeName: name}
+	}
+	return typ
+}
+
+func (tr *typeResolver) newArrayValue(name, elemName string, defaultVal func() pgtype.ValueTranscoder) pgtype.ValueTranscoder {
+	if _, val, ok := tr.findValue(name); ok {
+		return val
+	}
+	elemOID, elemVal, ok := tr.findValue(elemName)
+	elemValFunc := func() pgtype.ValueTranscoder {
+		return pgtype.NewValue(elemVal).(pgtype.ValueTranscoder)
+	}
+	if !ok {
+		elemOID = unknownOID
+		elemValFunc = defaultVal
+	}
+	typ := pgtype.NewArrayType(name, elemOID, elemValFunc)
+	if elemOID == unknownOID {
+		return textPreferrer{ValueTranscoder: typ, typeName: name}
+	}
+	return typ
+}
+
+// newPartialFile creates a new pgtype.ValueTranscoder for the Postgres
+// composite type 'partial_file'.
+func (tr *typeResolver) newPartialFile() pgtype.ValueTranscoder {
+	return tr.newCompositeValue(
+		"partial_file",
+		compositeField{name: "idx", typeName: "int2", defaultVal: &pgtype.Int2{}},
+		compositeField{name: "path", typeName: "varchar", defaultVal: &pgtype.Varchar{}},
+		compositeField{name: "extension", typeName: "varchar", defaultVal: &pgtype.Varchar{}},
+		compositeField{name: "mimetype", typeName: "varchar", defaultVal: &pgtype.Varchar{}},
+		compositeField{name: "bytes", typeName: "int4", defaultVal: &pgtype.Int4{}},
+		compositeField{name: "original_name", typeName: "varchar", defaultVal: &pgtype.Varchar{}},
+	)
+}
+
+// newPartialFileRaw returns all composite fields for the Postgres composite
+// type 'partial_file' as a slice of interface{} to encode query parameters.
+func (tr *typeResolver) newPartialFileRaw(v PartialFile) []interface{} {
+	return []interface{}{
+		v.Idx,
+		v.Path,
+		v.Extension,
+		v.Mimetype,
+		v.Bytes,
+		v.OriginalName,
+	}
+}
+
+// newPartialFileArray creates a new pgtype.ValueTranscoder for the Postgres
+// '_partial_file' array type.
+func (tr *typeResolver) newPartialFileArray() pgtype.ValueTranscoder {
+	return tr.newArrayValue("_partial_file", "partial_file", tr.newPartialFile)
+}
+
+// newPartialFileArrayInit creates an initialized pgtype.ValueTranscoder for the
+// Postgres array type '_partial_file' to encode query parameters.
+func (tr *typeResolver) newPartialFileArrayInit(ps []PartialFile) pgtype.ValueTranscoder {
+	dec := tr.newPartialFileArray()
+	if err := dec.Set(tr.newPartialFileArrayRaw(ps)); err != nil {
+		panic("encode []PartialFile: " + err.Error()) // should always succeed
+	}
+	return textPreferrer{ValueTranscoder: dec, typeName: "_partial_file"}
+}
+
+// newPartialFileArrayRaw returns all elements for the Postgres array type '_partial_file'
+// as a slice of interface{} for use with the pgtype.Value Set method.
+func (tr *typeResolver) newPartialFileArrayRaw(vs []PartialFile) []interface{} {
+	elems := make([]interface{}, len(vs))
+	for i, v := range vs {
+		elems[i] = tr.newPartialFileRaw(v)
+	}
+	return elems
 }
 
 const listBoardsSQL = `SELECT board_id, slug, title, tagline
@@ -798,6 +943,155 @@ func (q *DBQuerier) ShowFileScan(results pgx.BatchResults) (ShowFileRow, error) 
 	var item ShowFileRow
 	if err := row.Scan(&item.Extension, &item.Path, &item.Mimetype, &item.Bytes); err != nil {
 		return item, fmt.Errorf("scan ShowFileBatch row: %w", err)
+	}
+	return item, nil
+}
+
+const submitThreadSQL = `WITH
+thread AS (
+  INSERT INTO threads (board_id, thread_id) VALUES
+    ($1, board_post_seq_nextval($1))
+  RETURNING thread_id
+),
+post AS (
+  INSERT INTO posts (board_id, thread_id, post_id, subject, author, body) VALUES
+    ($1, (SELECT thread_id FROM thread), (SELECT thread_id FROM thread), $2, $3, $4)
+  RETURNING post_id
+),
+files_input AS (
+  SELECT $1 AS board_id, (SELECT thread_id FROM thread) AS thread_id, (SELECT thread_id FROM thread) AS post_id, idx, path, extension, mimetype, bytes, original_name
+  FROM unnest($5::partial_file[])
+),
+files AS (
+  INSERT INTO files (board_id, thread_id, post_id, idx, path, extension, mimetype, bytes, original_name)
+  SELECT *
+  FROM files_input
+)
+SELECT thread_id FROM thread
+;`
+
+type SubmitThreadParams struct {
+	BoardID      int32
+	Subject      pgtype.Varchar
+	Author       pgtype.Varchar
+	Body         string
+	PartialFiles []PartialFile
+}
+
+// SubmitThread implements Querier.SubmitThread.
+func (q *DBQuerier) SubmitThread(ctx context.Context, params SubmitThreadParams) (*int, error) {
+	ctx = context.WithValue(ctx, "pggen_query_name", "SubmitThread")
+	row := q.conn.QueryRow(ctx, submitThreadSQL, params.BoardID, params.Subject, params.Author, params.Body, q.types.newPartialFileArrayInit(params.PartialFiles))
+	var item *int
+	if err := row.Scan(&item); err != nil {
+		return item, fmt.Errorf("query SubmitThread: %w", err)
+	}
+	return item, nil
+}
+
+// SubmitThreadBatch implements Querier.SubmitThreadBatch.
+func (q *DBQuerier) SubmitThreadBatch(batch genericBatch, params SubmitThreadParams) {
+	batch.Queue(submitThreadSQL, params.BoardID, params.Subject, params.Author, params.Body, q.types.newPartialFileArrayInit(params.PartialFiles))
+}
+
+// SubmitThreadScan implements Querier.SubmitThreadScan.
+func (q *DBQuerier) SubmitThreadScan(results pgx.BatchResults) (*int, error) {
+	row := results.QueryRow()
+	var item *int
+	if err := row.Scan(&item); err != nil {
+		return item, fmt.Errorf("scan SubmitThreadBatch row: %w", err)
+	}
+	return item, nil
+}
+
+const submitPostSQL = `WITH
+post AS (
+  INSERT INTO posts (board_id, thread_id, post_id, subject, author, body) VALUES
+    ($1, $2, board_post_seq_nextval($1), $3, $4, $5)
+  RETURNING post_id
+),
+files_input AS (
+  SELECT $1 AS board_id, $2, (SELECT post_id FROM post) AS post_id, idx, path, extension, mimetype, bytes, original_name
+  FROM unnest($6::partial_file[])
+),
+files AS (
+  INSERT INTO files (board_id, thread_id, post_id, idx, path, extension, mimetype, bytes, original_name)
+  SELECT *
+  FROM files_input
+)
+SELECT post_id FROM post
+;`
+
+type SubmitPostParams struct {
+	BoardID      int32
+	ThreadID     int
+	Subject      pgtype.Varchar
+	Author       pgtype.Varchar
+	Body         string
+	PartialFiles []PartialFile
+}
+
+// SubmitPost implements Querier.SubmitPost.
+func (q *DBQuerier) SubmitPost(ctx context.Context, params SubmitPostParams) (*int, error) {
+	ctx = context.WithValue(ctx, "pggen_query_name", "SubmitPost")
+	row := q.conn.QueryRow(ctx, submitPostSQL, params.BoardID, params.ThreadID, params.Subject, params.Author, params.Body, q.types.newPartialFileArrayInit(params.PartialFiles))
+	var item *int
+	if err := row.Scan(&item); err != nil {
+		return item, fmt.Errorf("query SubmitPost: %w", err)
+	}
+	return item, nil
+}
+
+// SubmitPostBatch implements Querier.SubmitPostBatch.
+func (q *DBQuerier) SubmitPostBatch(batch genericBatch, params SubmitPostParams) {
+	batch.Queue(submitPostSQL, params.BoardID, params.ThreadID, params.Subject, params.Author, params.Body, q.types.newPartialFileArrayInit(params.PartialFiles))
+}
+
+// SubmitPostScan implements Querier.SubmitPostScan.
+func (q *DBQuerier) SubmitPostScan(results pgx.BatchResults) (*int, error) {
+	row := results.QueryRow()
+	var item *int
+	if err := row.Scan(&item); err != nil {
+		return item, fmt.Errorf("scan SubmitPostBatch row: %w", err)
+	}
+	return item, nil
+}
+
+const submitPostNoFilesSQL = `INSERT INTO posts (board_id, thread_id, post_id, subject, author, body) VALUES
+    ($1, $2, board_post_seq_nextval($1), $3, $4, $5)
+  RETURNING post_id
+;`
+
+type SubmitPostNoFilesParams struct {
+	BoardID  int32
+	ThreadID int
+	Subject  pgtype.Varchar
+	Author   pgtype.Varchar
+	Body     string
+}
+
+// SubmitPostNoFiles implements Querier.SubmitPostNoFiles.
+func (q *DBQuerier) SubmitPostNoFiles(ctx context.Context, params SubmitPostNoFilesParams) (int, error) {
+	ctx = context.WithValue(ctx, "pggen_query_name", "SubmitPostNoFiles")
+	row := q.conn.QueryRow(ctx, submitPostNoFilesSQL, params.BoardID, params.ThreadID, params.Subject, params.Author, params.Body)
+	var item int
+	if err := row.Scan(&item); err != nil {
+		return item, fmt.Errorf("query SubmitPostNoFiles: %w", err)
+	}
+	return item, nil
+}
+
+// SubmitPostNoFilesBatch implements Querier.SubmitPostNoFilesBatch.
+func (q *DBQuerier) SubmitPostNoFilesBatch(batch genericBatch, params SubmitPostNoFilesParams) {
+	batch.Queue(submitPostNoFilesSQL, params.BoardID, params.ThreadID, params.Subject, params.Author, params.Body)
+}
+
+// SubmitPostNoFilesScan implements Querier.SubmitPostNoFilesScan.
+func (q *DBQuerier) SubmitPostNoFilesScan(results pgx.BatchResults) (int, error) {
+	row := results.QueryRow()
+	var item int
+	if err := row.Scan(&item); err != nil {
+		return item, fmt.Errorf("scan SubmitPostNoFilesBatch row: %w", err)
 	}
 	return item, nil
 }

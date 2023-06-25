@@ -994,6 +994,421 @@ func threadFull(board *repo.Board, thread *repo.Thread, main *repo.Post, other [
 	})
 }
 
+func postForm() templ.Component {
+	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) (err error) {
+		templBuffer, templIsBuffer := w.(*bytes.Buffer)
+		if !templIsBuffer {
+			templBuffer = templ.GetBuffer()
+			defer templ.ReleaseBuffer(templBuffer)
+		}
+		ctx = templ.InitializeContext(ctx)
+		var_34 := templ.GetChildren(ctx)
+		if var_34 == nil {
+			var_34 = templ.NopComponent
+		}
+		ctx = templ.ClearChildren(ctx)
+		// Element (standard)
+		_, err = templBuffer.WriteString("<form")
+		if err != nil {
+			return err
+		}
+		// Element Attributes
+		_, err = templBuffer.WriteString(" method=\"POST\"")
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString(" enctype=\"multipart/form-data\"")
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString(">")
+		if err != nil {
+			return err
+		}
+		// Element (standard)
+		_, err = templBuffer.WriteString("<table")
+		if err != nil {
+			return err
+		}
+		// Element Attributes
+		_, err = templBuffer.WriteString(" class=\"form\"")
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString(">")
+		if err != nil {
+			return err
+		}
+		// Element (standard)
+		_, err = templBuffer.WriteString("<tbody>")
+		if err != nil {
+			return err
+		}
+		// Element (standard)
+		_, err = templBuffer.WriteString("<tr>")
+		if err != nil {
+			return err
+		}
+		// Element (standard)
+		_, err = templBuffer.WriteString("<th>")
+		if err != nil {
+			return err
+		}
+		// Element (standard)
+		_, err = templBuffer.WriteString("<label")
+		if err != nil {
+			return err
+		}
+		// Element Attributes
+		_, err = templBuffer.WriteString(" for=\"author\"")
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString(">")
+		if err != nil {
+			return err
+		}
+		// Text
+		var_35 := `Name`
+		_, err = templBuffer.WriteString(var_35)
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</label>")
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</th>")
+		if err != nil {
+			return err
+		}
+		// Element (standard)
+		_, err = templBuffer.WriteString("<td>")
+		if err != nil {
+			return err
+		}
+		// Element (void)
+		_, err = templBuffer.WriteString("<input")
+		if err != nil {
+			return err
+		}
+		// Element Attributes
+		_, err = templBuffer.WriteString(" type=\"text\"")
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString(" id=\"author\"")
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString(" name=\"author\"")
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString(">")
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</td>")
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</tr>")
+		if err != nil {
+			return err
+		}
+		// Element (standard)
+		_, err = templBuffer.WriteString("<tr>")
+		if err != nil {
+			return err
+		}
+		// Element (standard)
+		_, err = templBuffer.WriteString("<th>")
+		if err != nil {
+			return err
+		}
+		// Element (standard)
+		_, err = templBuffer.WriteString("<label")
+		if err != nil {
+			return err
+		}
+		// Element Attributes
+		_, err = templBuffer.WriteString(" for=\"subject\"")
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString(">")
+		if err != nil {
+			return err
+		}
+		// Text
+		var_36 := `Subject`
+		_, err = templBuffer.WriteString(var_36)
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</label>")
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</th>")
+		if err != nil {
+			return err
+		}
+		// Element (standard)
+		_, err = templBuffer.WriteString("<td>")
+		if err != nil {
+			return err
+		}
+		// Element (void)
+		_, err = templBuffer.WriteString("<input")
+		if err != nil {
+			return err
+		}
+		// Element Attributes
+		_, err = templBuffer.WriteString(" type=\"text\"")
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString(" id=\"subject\"")
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString(" name=\"subject\"")
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString(">")
+		if err != nil {
+			return err
+		}
+		// Element (standard)
+		_, err = templBuffer.WriteString("<button")
+		if err != nil {
+			return err
+		}
+		// Element Attributes
+		_, err = templBuffer.WriteString(" type=\"submit\"")
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString(">")
+		if err != nil {
+			return err
+		}
+		// Text
+		var_37 := `Post`
+		_, err = templBuffer.WriteString(var_37)
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</button>")
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</td>")
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</tr>")
+		if err != nil {
+			return err
+		}
+		// Element (standard)
+		_, err = templBuffer.WriteString("<tr>")
+		if err != nil {
+			return err
+		}
+		// Element (standard)
+		_, err = templBuffer.WriteString("<th>")
+		if err != nil {
+			return err
+		}
+		// Text
+		var_38 := `Comment`
+		_, err = templBuffer.WriteString(var_38)
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</th>")
+		if err != nil {
+			return err
+		}
+		// Element (standard)
+		_, err = templBuffer.WriteString("<td>")
+		if err != nil {
+			return err
+		}
+		// Element (standard)
+		_, err = templBuffer.WriteString("<textarea")
+		if err != nil {
+			return err
+		}
+		// Element Attributes
+		_, err = templBuffer.WriteString(" name=\"body\"")
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString(" rows=\"5\"")
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString(" cols=\"27\"")
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString(">")
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</textarea>")
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</td>")
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</tr>")
+		if err != nil {
+			return err
+		}
+		// Element (standard)
+		_, err = templBuffer.WriteString("<tr>")
+		if err != nil {
+			return err
+		}
+		// Element (standard)
+		_, err = templBuffer.WriteString("<th>")
+		if err != nil {
+			return err
+		}
+		// Element (standard)
+		_, err = templBuffer.WriteString("<label")
+		if err != nil {
+			return err
+		}
+		// Element Attributes
+		_, err = templBuffer.WriteString(" for=\"file1\"")
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString(">")
+		if err != nil {
+			return err
+		}
+		// Text
+		var_39 := `File`
+		_, err = templBuffer.WriteString(var_39)
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</label>")
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</th>")
+		if err != nil {
+			return err
+		}
+		// Element (standard)
+		_, err = templBuffer.WriteString("<td>")
+		if err != nil {
+			return err
+		}
+		// Element (void)
+		_, err = templBuffer.WriteString("<input")
+		if err != nil {
+			return err
+		}
+		// Element Attributes
+		_, err = templBuffer.WriteString(" type=\"file\"")
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString(" id=\"file1\"")
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString(" name=\"file1\"")
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString(">")
+		if err != nil {
+			return err
+		}
+		// Element (void)
+		_, err = templBuffer.WriteString("<input")
+		if err != nil {
+			return err
+		}
+		// Element Attributes
+		_, err = templBuffer.WriteString(" type=\"file\"")
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString(" id=\"file2\"")
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString(" name=\"file2\"")
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString(">")
+		if err != nil {
+			return err
+		}
+		// Element (void)
+		_, err = templBuffer.WriteString("<input")
+		if err != nil {
+			return err
+		}
+		// Element Attributes
+		_, err = templBuffer.WriteString(" type=\"file\"")
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString(" id=\"file3\"")
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString(" name=\"file2\"")
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString(">")
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</td>")
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</tr>")
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</tbody>")
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</table>")
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</form>")
+		if err != nil {
+			return err
+		}
+		if !templIsBuffer {
+			_, err = io.Copy(w, templBuffer)
+		}
+		return err
+	})
+}
+
 // GoExpression
 // wrappers:
 
@@ -1005,9 +1420,9 @@ func page(title string, description string) templ.Component {
 			defer templ.ReleaseBuffer(templBuffer)
 		}
 		ctx = templ.InitializeContext(ctx)
-		var_34 := templ.GetChildren(ctx)
-		if var_34 == nil {
-			var_34 = templ.NopComponent
+		var_40 := templ.GetChildren(ctx)
+		if var_40 == nil {
+			var_40 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
 		// DocType
@@ -1126,8 +1541,8 @@ func page(title string, description string) templ.Component {
 			return err
 		}
 		// StringExpression
-		var var_35 string = title
-		_, err = templBuffer.WriteString(templ.EscapeString(var_35))
+		var var_41 string = title
+		_, err = templBuffer.WriteString(templ.EscapeString(var_41))
 		if err != nil {
 			return err
 		}
@@ -1163,7 +1578,7 @@ func page(title string, description string) templ.Component {
 			return err
 		}
 		// Children
-		err = var_34.Render(ctx, templBuffer)
+		err = var_40.Render(ctx, templBuffer)
 		if err != nil {
 			return err
 		}
@@ -1190,9 +1605,9 @@ func wrapperBoard(board *repo.Board) templ.Component {
 			defer templ.ReleaseBuffer(templBuffer)
 		}
 		ctx = templ.InitializeContext(ctx)
-		var_36 := templ.GetChildren(ctx)
-		if var_36 == nil {
-			var_36 = templ.NopComponent
+		var_42 := templ.GetChildren(ctx)
+		if var_42 == nil {
+			var_42 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
 		// Element (standard)
@@ -1210,8 +1625,8 @@ func wrapperBoard(board *repo.Board) templ.Component {
 			return err
 		}
 		// StringExpression
-		var var_37 string = textBoard(board)
-		_, err = templBuffer.WriteString(templ.EscapeString(var_37))
+		var var_43 string = textBoard(board)
+		_, err = templBuffer.WriteString(templ.EscapeString(var_43))
 		if err != nil {
 			return err
 		}
@@ -1234,8 +1649,8 @@ func wrapperBoard(board *repo.Board) templ.Component {
 			return err
 		}
 		// StringExpression
-		var var_38 string = board.Tagline
-		_, err = templBuffer.WriteString(templ.EscapeString(var_38))
+		var var_44 string = board.Tagline
+		_, err = templBuffer.WriteString(templ.EscapeString(var_44))
 		if err != nil {
 			return err
 		}
@@ -1243,13 +1658,8 @@ func wrapperBoard(board *repo.Board) templ.Component {
 		if err != nil {
 			return err
 		}
-		// Element (void)
-		_, err = templBuffer.WriteString("<hr>")
-		if err != nil {
-			return err
-		}
 		// Children
-		err = var_36.Render(ctx, templBuffer)
+		err = var_42.Render(ctx, templBuffer)
 		if err != nil {
 			return err
 		}
@@ -1271,13 +1681,13 @@ func ListBoards(boards []repo.Board) templ.Component {
 			defer templ.ReleaseBuffer(templBuffer)
 		}
 		ctx = templ.InitializeContext(ctx)
-		var_39 := templ.GetChildren(ctx)
-		if var_39 == nil {
-			var_39 = templ.NopComponent
+		var_45 := templ.GetChildren(ctx)
+		if var_45 == nil {
+			var_45 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
 		// TemplElement
-		var_40 := templ.ComponentFunc(func(ctx context.Context, w io.Writer) (err error) {
+		var_46 := templ.ComponentFunc(func(ctx context.Context, w io.Writer) (err error) {
 			templBuffer, templIsBuffer := w.(*bytes.Buffer)
 			if !templIsBuffer {
 				templBuffer = templ.GetBuffer()
@@ -1304,8 +1714,8 @@ func ListBoards(boards []repo.Board) templ.Component {
 				if err != nil {
 					return err
 				}
-				var var_41 templ.SafeURL = linkBoard(&board)
-				_, err = templBuffer.WriteString(templ.EscapeString(string(var_41)))
+				var var_47 templ.SafeURL = linkBoard(&board)
+				_, err = templBuffer.WriteString(templ.EscapeString(string(var_47)))
 				if err != nil {
 					return err
 				}
@@ -1318,8 +1728,8 @@ func ListBoards(boards []repo.Board) templ.Component {
 					return err
 				}
 				// StringExpression
-				var var_42 string = textBoard(&board)
-				_, err = templBuffer.WriteString(templ.EscapeString(var_42))
+				var var_48 string = textBoard(&board)
+				_, err = templBuffer.WriteString(templ.EscapeString(var_48))
 				if err != nil {
 					return err
 				}
@@ -1337,7 +1747,7 @@ func ListBoards(boards []repo.Board) templ.Component {
 			}
 			return err
 		})
-		err = page("Creamy Board", "the world is your oyster").Render(templ.WithChildren(ctx, var_40), templBuffer)
+		err = page("Creamy Board", "the world is your oyster").Render(templ.WithChildren(ctx, var_46), templBuffer)
 		if err != nil {
 			return err
 		}
@@ -1356,24 +1766,44 @@ func ShowBoardAndRecents(brt *repo.BoardRecentThreads) templ.Component {
 			defer templ.ReleaseBuffer(templBuffer)
 		}
 		ctx = templ.InitializeContext(ctx)
-		var_43 := templ.GetChildren(ctx)
-		if var_43 == nil {
-			var_43 = templ.NopComponent
+		var_49 := templ.GetChildren(ctx)
+		if var_49 == nil {
+			var_49 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
 		// TemplElement
-		var_44 := templ.ComponentFunc(func(ctx context.Context, w io.Writer) (err error) {
+		var_50 := templ.ComponentFunc(func(ctx context.Context, w io.Writer) (err error) {
 			templBuffer, templIsBuffer := w.(*bytes.Buffer)
 			if !templIsBuffer {
 				templBuffer = templ.GetBuffer()
 				defer templ.ReleaseBuffer(templBuffer)
 			}
 			// TemplElement
-			var_45 := templ.ComponentFunc(func(ctx context.Context, w io.Writer) (err error) {
+			var_51 := templ.ComponentFunc(func(ctx context.Context, w io.Writer) (err error) {
 				templBuffer, templIsBuffer := w.(*bytes.Buffer)
 				if !templIsBuffer {
 					templBuffer = templ.GetBuffer()
 					defer templ.ReleaseBuffer(templBuffer)
+				}
+				// TemplElement
+				err = postForm().Render(ctx, templBuffer)
+				if err != nil {
+					return err
+				}
+				// Whitespace (normalised)
+				_, err = templBuffer.WriteString(` `)
+				if err != nil {
+					return err
+				}
+				// Element (void)
+				_, err = templBuffer.WriteString("<hr>")
+				if err != nil {
+					return err
+				}
+				// Whitespace (normalised)
+				_, err = templBuffer.WriteString(` `)
+				if err != nil {
+					return err
 				}
 				// For
 				for _, thread := range brt.RecentThreads {
@@ -1388,7 +1818,7 @@ func ShowBoardAndRecents(brt *repo.BoardRecentThreads) templ.Component {
 				}
 				return err
 			})
-			err = wrapperBoard(&brt.Board).Render(templ.WithChildren(ctx, var_45), templBuffer)
+			err = wrapperBoard(&brt.Board).Render(templ.WithChildren(ctx, var_51), templBuffer)
 			if err != nil {
 				return err
 			}
@@ -1397,7 +1827,7 @@ func ShowBoardAndRecents(brt *repo.BoardRecentThreads) templ.Component {
 			}
 			return err
 		})
-		err = page(textBoard(&brt.Board), brt.Board.Tagline).Render(templ.WithChildren(ctx, var_44), templBuffer)
+		err = page(textBoard(&brt.Board), brt.Board.Tagline).Render(templ.WithChildren(ctx, var_50), templBuffer)
 		if err != nil {
 			return err
 		}
@@ -1416,24 +1846,144 @@ func ShowFullThread(bft *repo.BoardFullThread) templ.Component {
 			defer templ.ReleaseBuffer(templBuffer)
 		}
 		ctx = templ.InitializeContext(ctx)
-		var_46 := templ.GetChildren(ctx)
-		if var_46 == nil {
-			var_46 = templ.NopComponent
+		var_52 := templ.GetChildren(ctx)
+		if var_52 == nil {
+			var_52 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
 		// TemplElement
-		var_47 := templ.ComponentFunc(func(ctx context.Context, w io.Writer) (err error) {
+		var_53 := templ.ComponentFunc(func(ctx context.Context, w io.Writer) (err error) {
 			templBuffer, templIsBuffer := w.(*bytes.Buffer)
 			if !templIsBuffer {
 				templBuffer = templ.GetBuffer()
 				defer templ.ReleaseBuffer(templBuffer)
 			}
 			// TemplElement
-			var_48 := templ.ComponentFunc(func(ctx context.Context, w io.Writer) (err error) {
+			var_54 := templ.ComponentFunc(func(ctx context.Context, w io.Writer) (err error) {
 				templBuffer, templIsBuffer := w.(*bytes.Buffer)
 				if !templIsBuffer {
 					templBuffer = templ.GetBuffer()
 					defer templ.ReleaseBuffer(templBuffer)
+				}
+				// Element (standard)
+				_, err = templBuffer.WriteString("<div")
+				if err != nil {
+					return err
+				}
+				// Element Attributes
+				_, err = templBuffer.WriteString(" class=\"thread-return-container\"")
+				if err != nil {
+					return err
+				}
+				_, err = templBuffer.WriteString(">")
+				if err != nil {
+					return err
+				}
+				// Element (standard)
+				_, err = templBuffer.WriteString("<div")
+				if err != nil {
+					return err
+				}
+				// Element Attributes
+				_, err = templBuffer.WriteString(" class=\"thread-return\"")
+				if err != nil {
+					return err
+				}
+				_, err = templBuffer.WriteString(">")
+				if err != nil {
+					return err
+				}
+				// Text
+				var_55 := `Posting mode: Reply`
+				_, err = templBuffer.WriteString(var_55)
+				if err != nil {
+					return err
+				}
+				// Whitespace (normalised)
+				_, err = templBuffer.WriteString(` `)
+				if err != nil {
+					return err
+				}
+				// Text
+				var_56 := `&nbsp;`
+				_, err = templBuffer.WriteString(var_56)
+				if err != nil {
+					return err
+				}
+				// Whitespace (normalised)
+				_, err = templBuffer.WriteString(` `)
+				if err != nil {
+					return err
+				}
+				// Element (standard)
+				_, err = templBuffer.WriteString("<a")
+				if err != nil {
+					return err
+				}
+				// Element Attributes
+				_, err = templBuffer.WriteString(" href=")
+				if err != nil {
+					return err
+				}
+				_, err = templBuffer.WriteString("\"")
+				if err != nil {
+					return err
+				}
+				var var_57 templ.SafeURL = linkBoard(&bft.Board)
+				_, err = templBuffer.WriteString(templ.EscapeString(string(var_57)))
+				if err != nil {
+					return err
+				}
+				_, err = templBuffer.WriteString("\"")
+				if err != nil {
+					return err
+				}
+				_, err = templBuffer.WriteString(">")
+				if err != nil {
+					return err
+				}
+				// Text
+				var_58 := `[Return]`
+				_, err = templBuffer.WriteString(var_58)
+				if err != nil {
+					return err
+				}
+				_, err = templBuffer.WriteString("</a>")
+				if err != nil {
+					return err
+				}
+				_, err = templBuffer.WriteString("</div>")
+				if err != nil {
+					return err
+				}
+				_, err = templBuffer.WriteString("</div>")
+				if err != nil {
+					return err
+				}
+				// Whitespace (normalised)
+				_, err = templBuffer.WriteString(` `)
+				if err != nil {
+					return err
+				}
+				// TemplElement
+				err = postForm().Render(ctx, templBuffer)
+				if err != nil {
+					return err
+				}
+				// Whitespace (normalised)
+				_, err = templBuffer.WriteString(` `)
+				if err != nil {
+					return err
+				}
+				// Element (void)
+				_, err = templBuffer.WriteString("<hr>")
+				if err != nil {
+					return err
+				}
+				// Whitespace (normalised)
+				_, err = templBuffer.WriteString(` `)
+				if err != nil {
+					return err
 				}
 				// TemplElement
 				err = threadFull(&bft.Board, &bft.FullThread.Thread, &bft.FullThread.MainPost, bft.FullThread.AllPosts, true).Render(ctx, templBuffer)
@@ -1445,7 +1995,7 @@ func ShowFullThread(bft *repo.BoardFullThread) templ.Component {
 				}
 				return err
 			})
-			err = wrapperBoard(&bft.Board).Render(templ.WithChildren(ctx, var_48), templBuffer)
+			err = wrapperBoard(&bft.Board).Render(templ.WithChildren(ctx, var_54), templBuffer)
 			if err != nil {
 				return err
 			}
@@ -1454,7 +2004,7 @@ func ShowFullThread(bft *repo.BoardFullThread) templ.Component {
 			}
 			return err
 		})
-		err = page(textThread(&bft.Board, &bft.FullThread.MainPost), bft.FullThread.MainPost.Body).Render(templ.WithChildren(ctx, var_47), templBuffer)
+		err = page(textThread(&bft.Board, &bft.FullThread.MainPost), bft.FullThread.MainPost.Body).Render(templ.WithChildren(ctx, var_53), templBuffer)
 		if err != nil {
 			return err
 		}

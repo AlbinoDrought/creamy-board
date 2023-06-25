@@ -35,6 +35,50 @@ hr {
   text-align: center;
   color: var(--highlight2);
 }
+.board__title, .board__tag {
+  margin: .25em;
+}
+
+.thread-return-container {
+  text-align: center;
+}
+.thread-return {
+  margin: 1em auto;
+  background-color: var(--highlight1);
+  color: var(--background1);
+  font-weight: bold;
+  display: inline-block;
+  padding: .25em .5em;
+}
+.thread-return a:not(:hover) {
+  background-color: var(--highlight1);
+  color: var(--background1);
+}
+
+.form {
+  margin: auto;
+}
+.form * {
+  font-size: 16px;
+}
+.form th {
+  background-color: var(--background2);
+  color: var(--text2);
+  text-align: left;
+}
+.form input[type="text"], .form textarea, .form button[type="submit"] {
+  background: var(--background2);
+  border: 1px solid var(--background3);
+  color: var(--text1);
+}
+.form button[type="submit"]:hover {
+  background: var(--background3);
+  color: var(--highlight1);
+  border: 1px solid var(--highlight1);
+}
+.form input[type="file"] {
+  display: block;
+}
 
 .thread {
   padding: 0 .5em;

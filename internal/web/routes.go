@@ -49,11 +49,15 @@ func Router() http.Handler {
 
 	r.Get("/", htmlPortal.ListBoards)
 	r.Get("/index.html", htmlPortal.ListBoards)
+	// todo: redirect /{boardSlug}, but only if it is a valid board (otherwise ruins /favicon.ico routing)
 	r.Get("/{boardSlug}/", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, fmt.Sprintf("/%v/index.html", chi.URLParam(r, "boardSlug")), http.StatusFound)
 	})
 	r.Get("/{boardSlug}/index.html", func(w http.ResponseWriter, r *http.Request) {
 		htmlPortal.ListBoardThreads(w, r, chi.URLParam(r, "boardSlug"), 1)
+	})
+	r.Post("/{boardSlug}/index.html", func(w http.ResponseWriter, r *http.Request) {
+		htmlPortal.SubmitThread(w, r, chi.URLParam(r, "boardSlug"))
 	})
 	r.Get("/{boardSlug}/{page}.html", func(w http.ResponseWriter, r *http.Request) {
 		pageStr := chi.URLParam(r, "page")
@@ -76,6 +80,15 @@ func Router() http.Handler {
 		}
 
 		htmlPortal.ShowThread(w, r, chi.URLParam(r, "boardSlug"), threadID)
+	})
+	r.Post("/{boardSlug}/res/{threadID}.html", func(w http.ResponseWriter, r *http.Request) {
+		threadIDStr := chi.URLParam(r, "threadID")
+		threadID, err := strconv.Atoi(threadIDStr)
+		if err != nil || threadID < 0 {
+			threadID = 0 // let handler show 404
+		}
+
+		htmlPortal.SubmitThreadPost(w, r, chi.URLParam(r, "boardSlug"), threadID)
 	})
 
 	jsonPortal := JSONWebPortal{

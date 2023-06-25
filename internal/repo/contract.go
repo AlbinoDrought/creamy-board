@@ -1,6 +1,8 @@
 package repo
 
-import "context"
+import (
+	"context"
+)
 
 type Board struct {
 	Slug    string `json:"slug"`
@@ -55,8 +57,26 @@ type BoardFullThread struct {
 	FullThread FullThread `json:"full_thread"`
 }
 
+type SubmitPostFile struct {
+	Extension    string
+	MimeType     string
+	Bytes        int
+	OriginalName string
+	InternalPath string
+}
+
+type SubmitPost struct {
+	Subject string
+	Author  string
+	Body    string
+	Files   []SubmitPostFile
+}
+
 type CreamyBoard interface {
 	ListBoards(ctx context.Context) ([]Board, error)
 	ShowBoardListRecentThreads(ctx context.Context, boardSlug string, page int) (*BoardRecentThreads, error)
 	ShowThread(ctx context.Context, boardSlug string, threadID int) (*BoardFullThread, error)
+
+	SubmitThread(ctx context.Context, boardSlug string, req SubmitPost) (int, error)
+	SubmitThreadPost(ctx context.Context, boardSlug string, threadID int, req SubmitPost) (int, error)
 }

@@ -5,11 +5,20 @@ CREATE TABLE boards (
 , tagline VARCHAR(255) NOT NULL DEFAULT ''
 );
 
-CREATE TABLE board_post_counters (
-  board_id INTEGER NOT NULL PRIMARY KEY
-, next_post_id BIGINT NOT NULL DEFAULT 1
-, FOREIGN KEY (board_id) REFERENCES boards (board_id) ON DELETE CASCADE
-);
+CREATE FUNCTION make_board_post_seq() RETURNS TRIGGER LANGUAGE PLPGSQL AS $$
+  BEGIN
+    EXECUTE FORMAT('CREATE SEQUENCE IF NOT EXISTS board_post_seq_%s', NEW.board_id);
+    RETURN NEW;
+  END
+$$;
+
+CREATE TRIGGER make_board_post_seq
+AFTER INSERT ON boards
+FOR EACH ROW EXECUTE PROCEDURE make_board_post_seq();
+
+CREATE FUNCTION board_post_seq_nextval(board_id INTEGER) RETURNS INTEGER LANGUAGE SQL AS $$
+  SELECT nextval('board_post_seq_' || board_id);
+$$;
 
 CREATE TABLE threads (
   board_id INTEGER NOT NULL
@@ -56,25 +65,48 @@ CREATE TABLE files (
 CREATE INDEX thread_files ON files (board_id, thread_id);
 CREATE INDEX post_files ON files (board_id, thread_id, post_id);
 
+CREATE TYPE partial_file AS (
+  idx SMALLINT
+, path VARCHAR(255)
+, extension VARCHAR(10)
+, mimetype VARCHAR(255)
+, bytes INTEGER
+, original_name VARCHAR(255)
+)
+;
+
 INSERT INTO boards (slug, title, tagline) VALUES
   ('cb', 'Creamy Board', 'Welcome Home')
 ;
-INSERT INTO board_post_counters (board_id, next_post_id) VALUES
-  (1, 4)
-;
-INSERT INTO threads (board_id, thread_id) VALUES
-  (1, 1)
-;
-INSERT INTO posts (board_id, thread_id, post_id, subject, author, body) VALUES
-  (1, 1, 1, 'Welcome to Creamy Board', 'Migrator', E'Test thread body please ignore\n\n(pic related)')
-, (1, 1, 2, '', 'Migrator', 'chicken chicken dog')
-, (1, 1, 3, 'meow', 'Meowgrator', 'cat')
-;
 
+WITH
+board AS (
+  SELECT board_id FROM boards WHERE slug = 'cb'
+),
+thread AS (
+  INSERT INTO threads (board_id, thread_id) VALUES
+    ((SELECT board_id FROM board), board_post_seq_nextval((SELECT board_id FROM board)))
+  RETURNING thread_id
+),
+post1 AS (
+  INSERT INTO posts (board_id, thread_id, post_id, subject, author, body) VALUES
+    ((SELECT board_id FROM board), (SELECT thread_id FROM thread), (SELECT thread_id FROM thread), 'Welcome to Creamy Board', 'Migrator', E'Test thread body please ignore\n\n(pic related)')
+  RETURNING post_id
+),
+post2 AS (
+  INSERT INTO posts (board_id, thread_id, post_id, subject, author, body) VALUES
+    ((SELECT board_id FROM board), (SELECT thread_id FROM thread), board_post_seq_nextval((SELECT board_id FROM board)), '', 'Migrator', 'chicken chicken dog')
+  RETURNING post_id
+),
+post3 AS (
+  INSERT INTO posts (board_id, thread_id, post_id, subject, author, body) VALUES
+    ((SELECT board_id FROM board), (SELECT thread_id FROM thread), board_post_seq_nextval((SELECT board_id FROM board)), 'meow', 'Meowgrator', 'cat')
+  RETURNING post_id
+)
 INSERT INTO files (board_id, thread_id, post_id, idx, path, extension, mimetype, bytes, original_name) VALUES
-  (1, 1, 1, 0, 'test_llama.jpg', 'jpg', 'image/jpeg', 101036, 'llama.jpg')
-, (1, 1, 2, 0, 'test_chimkin.jpg', 'jpg', 'image/jpeg', 179262, 'chimkin.jpg')
-, (1, 1, 2, 1, 'test_chimkin2.jpg', 'jpg', 'image/jpeg', 179262, 'chimkin2.jpg')
-, (1, 1, 2, 2, 'test_dog.jpg', 'jpg', 'image/jpeg', 54955, 'notchimkin.jpg')
-, (1, 1, 3, 0, 'test_cat.jpg', 'jpg', 'image/jpeg', 84949, 'cat.jpg')
+  ((SELECT board_id FROM board), (SELECT thread_id FROM thread), (SELECT post_id FROM post1), 0, 'test_llama.jpg', 'jpg', 'image/jpeg', 101036, 'llama.jpg')
+, ((SELECT board_id FROM board), (SELECT thread_id FROM thread), (SELECT post_id FROM post2), 0, 'test_chimkin.jpg', 'jpg', 'image/jpeg', 179262, 'chimkin.jpg')
+, ((SELECT board_id FROM board), (SELECT thread_id FROM thread), (SELECT post_id FROM post2), 1, 'test_chimkin2.jpg', 'jpg', 'image/jpeg', 179262, 'chimkin2.jpg')
+, ((SELECT board_id FROM board), (SELECT thread_id FROM thread), (SELECT post_id FROM post2), 2, 'test_dog.jpg', 'jpg', 'image/jpeg', 54955, 'notchimkin.jpg')
+, ((SELECT board_id FROM board), (SELECT thread_id FROM thread), (SELECT post_id FROM post3), 0, 'test_cat.jpg', 'jpg', 'image/jpeg', 84949, 'cat.jpg')
 ;

@@ -1,8 +1,16 @@
 package web
 
 import (
+	"context"
+	"fmt"
+	"io"
 	"net/http"
+	"path"
+	"strings"
 
+	"github.com/gabriel-vasile/mimetype"
+	"github.com/rs/xid"
+	"go.albinodrought.com/creamy-board/internal/cfg"
 	"go.albinodrought.com/creamy-board/internal/log"
 	"go.albinodrought.com/creamy-board/internal/repo"
 	"go.albinodrought.com/creamy-board/internal/web/tmpl"
@@ -50,6 +58,164 @@ func (wp *HTMLWebPortal) ShowThread(w http.ResponseWriter, r *http.Request, boar
 
 	w.Header().Add("Content-Type", "text/html")
 	tmpl.ShowFullThread(boardFullThread).Render(r.Context(), w)
+}
+
+var acceptedMimes = []string{
+	"image/jpeg",
+	"image/gif",
+	"image/png",
+}
+
+func htmlMimeTypeAllowed(mime *mimetype.MIME) bool {
+	mimeStr := mime.String()
+	for _, acceptedMime := range acceptedMimes {
+		if acceptedMime == mimeStr {
+			return true
+		}
+	}
+	return false
+}
+
+func (wp *HTMLWebPortal) SubmitThread(w http.ResponseWriter, r *http.Request, boardSlug string) {
+	req := repo.SubmitPost{
+		Subject: r.FormValue("subject"),
+		Author:  r.FormValue("author"),
+		Body:    r.FormValue("body"),
+		Files:   []repo.SubmitPostFile{},
+	}
+
+	created := false
+	// clean up temp files if req fails
+	defer func() {
+		if created {
+			return
+		}
+		for _, file := range req.Files {
+			cfg.Storage.Delete(context.TODO(), file.InternalPath)
+		}
+	}()
+
+	for _, fileKey := range []string{"file1", "file2", "file3"} {
+		formFile, formFileHeader, err := r.FormFile(fileKey)
+		if err != nil {
+			if err == http.ErrMissingFile {
+				// not submitted, normal
+				continue
+			}
+			log.Warnf("failed to retrieve form file %v: %v", fileKey, err)
+			htmlUnhandled(w)
+			return
+		}
+
+		mime, _ := mimetype.DetectReader(formFile)
+		if mime == nil || !htmlMimeTypeAllowed(mime) {
+			http.Redirect(w, r, fmt.Sprintf("/%v/index.html?error=unsupported_mimetype", boardSlug), http.StatusFound)
+			return
+		}
+		extension := strings.TrimPrefix(mime.Extension(), ".")
+		if extension == "" {
+			extension = "unknown"
+		}
+
+		filePath := path.Join("uf", path.Clean(boardSlug), xid.New().String())
+
+		formFile.Seek(0, io.SeekStart)
+		err = cfg.Storage.Write(r.Context(), filePath, formFile)
+		if err != nil {
+			log.Warnf("failed to save form file %v: %v", fileKey, err)
+			htmlUnhandled(w)
+			return
+		}
+
+		req.Files = append(req.Files, repo.SubmitPostFile{
+			Extension:    extension,
+			MimeType:     mime.String(),
+			Bytes:        int(formFileHeader.Size),
+			OriginalName: formFileHeader.Filename,
+			InternalPath: filePath,
+		})
+	}
+
+	threadID, err := wp.Repo.SubmitThread(r.Context(), boardSlug, req)
+	if err != nil {
+		log.Warnf("failed to create board %v thread %+v: %v", boardSlug, req, err)
+		htmlUnhandled(w) // todo: could be 404 (boardSlug)
+		return
+	}
+
+	created = true
+	http.Redirect(w, r, fmt.Sprintf("/%v/res/%v.html", boardSlug, threadID), http.StatusFound)
+}
+
+func (wp *HTMLWebPortal) SubmitThreadPost(w http.ResponseWriter, r *http.Request, boardSlug string, threadID int) {
+	req := repo.SubmitPost{
+		Subject: r.FormValue("subject"),
+		Author:  r.FormValue("author"),
+		Body:    r.FormValue("body"),
+		Files:   []repo.SubmitPostFile{},
+	}
+
+	created := false
+	// clean up temp files if req fails
+	defer func() {
+		if created {
+			return
+		}
+		for _, file := range req.Files {
+			cfg.Storage.Delete(context.TODO(), file.InternalPath)
+		}
+	}()
+
+	for _, fileKey := range []string{"file1", "file2", "file3"} {
+		formFile, formFileHeader, err := r.FormFile(fileKey)
+		if err != nil {
+			if err == http.ErrMissingFile {
+				// not submitted, normal
+				continue
+			}
+			log.Warnf("failed to retrieve form file %v: %v", fileKey, err)
+			htmlUnhandled(w)
+			return
+		}
+
+		mime, _ := mimetype.DetectReader(formFile)
+		if mime == nil || !htmlMimeTypeAllowed(mime) {
+			http.Redirect(w, r, fmt.Sprintf("/%v/index.html?error=unsupported_mimetype", boardSlug), http.StatusFound)
+			return
+		}
+		extension := strings.TrimPrefix(mime.Extension(), ".")
+		if extension == "" {
+			extension = "unknown"
+		}
+
+		filePath := path.Join("uf", path.Clean(boardSlug), xid.New().String())
+
+		formFile.Seek(0, io.SeekStart)
+		err = cfg.Storage.Write(r.Context(), filePath, formFile)
+		if err != nil {
+			log.Warnf("failed to save form file %v: %v", fileKey, err)
+			htmlUnhandled(w)
+			return
+		}
+
+		req.Files = append(req.Files, repo.SubmitPostFile{
+			Extension:    extension,
+			MimeType:     mime.String(),
+			Bytes:        int(formFileHeader.Size),
+			OriginalName: formFileHeader.Filename,
+			InternalPath: filePath,
+		})
+	}
+
+	postID, err := wp.Repo.SubmitThreadPost(r.Context(), boardSlug, threadID, req)
+	if err != nil {
+		log.Warnf("failed to create board %v thread %v post %+v: %v", boardSlug, threadID, req, err)
+		htmlUnhandled(w) // todo: could be 404 (boardSlug, threadID)
+		return
+	}
+
+	created = true
+	http.Redirect(w, r, fmt.Sprintf("/%v/res/%v.html#%v", boardSlug, threadID, postID), http.StatusFound)
 }
 
 var _ WebPortal = &HTMLWebPortal{}

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/jackc/pgtype"
 	"go.albinodrought.com/creamy-board/internal/db/queries"
 )
 
@@ -273,4 +274,79 @@ func (r *DBRepo) ShowThread(ctx context.Context, boardSlug string, threadID int)
 	}, nil
 }
 
-var _ CreamyBoard = &DBRepo{}
+func varchar(value string) pgtype.Varchar {
+	return pgtype.Varchar{String: value, Status: pgtype.Present}
+}
+
+func partialFiles(files []SubmitPostFile) []queries.PartialFile {
+	partialFiles := make([]queries.PartialFile, len(files))
+	for i, file := range files {
+		i16 := int16(i)
+		bytes32 := int32(file.Bytes)
+		partialFiles[i].Idx = &i16
+		partialFiles[i].Path = varchar(file.InternalPath)
+		partialFiles[i].Extension = varchar(file.Extension)
+		partialFiles[i].Mimetype = varchar(file.MimeType)
+		partialFiles[i].Bytes = &bytes32
+		partialFiles[i].OriginalName = varchar(file.OriginalName)
+	}
+	return partialFiles
+}
+
+func (r *DBRepo) SubmitThread(ctx context.Context, boardSlug string, req SubmitPost) (int, error) {
+	dbBoard, err := r.Querier.ShowBoardFromSlug(ctx, boardSlug)
+	if err != nil {
+		return 0, err
+	}
+
+	threadID, err := r.Querier.SubmitThread(ctx, queries.SubmitThreadParams{
+		BoardID:      dbBoard.BoardID,
+		Subject:      varchar(req.Subject),
+		Author:       varchar(req.Author),
+		Body:         req.Body,
+		PartialFiles: partialFiles(req.Files),
+	})
+	if err != nil {
+		return 0, err
+	}
+
+	return *threadID, nil
+}
+
+func (r *DBRepo) SubmitThreadPost(ctx context.Context, boardSlug string, threadID int, req SubmitPost) (int, error) {
+	dbBoard, err := r.Querier.ShowBoardFromSlug(ctx, boardSlug)
+	if err != nil {
+		return 0, err
+	}
+
+	if len(req.Files) == 0 {
+		postID, err := r.Querier.SubmitPostNoFiles(ctx, queries.SubmitPostNoFilesParams{
+			BoardID:  dbBoard.BoardID,
+			ThreadID: threadID,
+			Subject:  varchar(req.Subject),
+			Author:   varchar(req.Author),
+			Body:     req.Body,
+		})
+		if err != nil {
+			return 0, err
+		}
+		return postID, nil
+	} else {
+		// this query fails when PartialFiles are empty, so I use the above separate query
+		postID, err := r.Querier.SubmitPost(ctx, queries.SubmitPostParams{
+			BoardID:      dbBoard.BoardID,
+			ThreadID:     threadID,
+			Subject:      varchar(req.Subject),
+			Author:       varchar(req.Author),
+			Body:         req.Body,
+			PartialFiles: partialFiles(req.Files),
+		})
+
+		if err != nil {
+			return 0, err
+		}
+		return *postID, nil
+	}
+}
+
+// var _ CreamyBoard = &DBRepo{}
