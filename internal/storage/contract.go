@@ -1,10 +1,13 @@
 package storage
 
-import "io"
+import (
+	"context"
+	"io"
+)
 
 type Driver interface {
-	Boot() error
-	Read(path string) (io.ReadCloser, error)
-	Write(path string, stream io.ReadSeeker) error
-	Delete(path string) error
+	Boot(ctx context.Context) error
+	Read(ctx context.Context, path string) (io.ReadCloser, error)
+	Write(ctx context.Context, path string, stream io.Reader) error
+	Delete(ctx context.Context, path string) error
 }

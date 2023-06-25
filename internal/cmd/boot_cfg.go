@@ -9,14 +9,15 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
-	pgx4 "github.com/jackc/pgx/v4"
+	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+	pgxpool4 "github.com/jackc/pgx/v4/pgxpool"
 	pgx5 "github.com/jackc/pgx/v5"
 	"go.albinodrought.com/creamy-board/internal/db"
 	"go.albinodrought.com/creamy-board/internal/storage"
 )
 
-func bootDB4(ctx context.Context) (*pgx4.Conn, error) {
-	return db.Connect4(ctx, os.Getenv("CREAMY_DSN"))
+func bootDB4(ctx context.Context) (*pgxpool4.Pool, error) {
+	return db.ConnectPool4(ctx, os.Getenv("CREAMY_DSN"))
 }
 
 func bootDB5(ctx context.Context) (*pgx5.Conn, error) {
@@ -51,9 +52,11 @@ func bootStorage(ctx context.Context) (storage.Driver, error) {
 			return nil, err
 		}
 		s3Client := s3.New(s3Session)
+		s3Uploader := s3manager.NewUploaderWithClient(s3Client)
 		return &storage.S3Driver{
-			S3:     s3Client,
-			Bucket: os.Getenv("CREAMY_MINIO_BUCKET"),
+			S3:       s3Client,
+			Uploader: s3Uploader,
+			Bucket:   os.Getenv("CREAMY_MINIO_BUCKET"),
 		}, nil
 	}
 

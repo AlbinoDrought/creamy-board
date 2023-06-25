@@ -21,6 +21,28 @@ func Router() http.Handler {
 		Querier: cfg.Querier,
 	}
 
+	r.Get("/{boardSlug}/src/{threadID}-{postID}-{index}.{extension}", func(w http.ResponseWriter, r *http.Request) {
+		threadIDStr := chi.URLParam(r, "threadID")
+		threadID, err := strconv.Atoi(threadIDStr)
+		if err != nil || threadID < 0 {
+			threadID = 0 // let handler show 404
+		}
+
+		postIDStr := chi.URLParam(r, "postID")
+		postID, err := strconv.Atoi(postIDStr)
+		if err != nil || postID < 0 {
+			postID = 0 // let handler show 404
+		}
+
+		indexStr := chi.URLParam(r, "index")
+		index, err := strconv.Atoi(indexStr)
+		if err != nil || postID < 0 {
+			index = 0 // let handler show 404
+		}
+
+		ServeFile(w, r, chi.URLParam(r, "boardSlug"), threadID, postID, index, chi.URLParam(r, "extension"))
+	})
+
 	htmlPortal := HTMLWebPortal{
 		Repo: &repo,
 	}

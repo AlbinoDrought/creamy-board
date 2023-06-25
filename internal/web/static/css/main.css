@@ -70,6 +70,30 @@ hr {
   white-space: pre-wrap;
 }
 
+.post__files {
+  margin-bottom: .5em;
+}
+
+.post__files--multi .file {
+  float: left;
+  margin-right: 1em;
+}
+
+.post__files--multi .file__info {
+  max-width: 300px;
+}
+
+.file__img {
+  max-width: 300px;
+  max-height: 250px;
+  height: auto;
+  width: auto;
+  padding: .5em;
+  float: left;
+  margin-right: 1em;
+  margin-bottom: 1em;
+}
+
 .thread__posts .post__content {
   border: 1px solid var(--background3);
   background-color: var(--background2);

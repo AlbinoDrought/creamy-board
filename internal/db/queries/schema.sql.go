@@ -64,6 +64,27 @@ type Querier interface {
 	ListThreadPostsBatch(batch genericBatch, boardID int32, threadID int)
 	// ListThreadPostsScan scans the result of an executed ListThreadPostsBatch query.
 	ListThreadPostsScan(results pgx.BatchResults) ([]ListThreadPostsRow, error)
+
+	ListPostFiles(ctx context.Context, boardID int32, postIds []int) ([]ListPostFilesRow, error)
+	// ListPostFilesBatch enqueues a ListPostFiles query into batch to be executed
+	// later by the batch.
+	ListPostFilesBatch(batch genericBatch, boardID int32, postIds []int)
+	// ListPostFilesScan scans the result of an executed ListPostFilesBatch query.
+	ListPostFilesScan(results pgx.BatchResults) ([]ListPostFilesRow, error)
+
+	ListThreadFiles(ctx context.Context, boardID int32, threadID int) ([]ListThreadFilesRow, error)
+	// ListThreadFilesBatch enqueues a ListThreadFiles query into batch to be executed
+	// later by the batch.
+	ListThreadFilesBatch(batch genericBatch, boardID int32, threadID int)
+	// ListThreadFilesScan scans the result of an executed ListThreadFilesBatch query.
+	ListThreadFilesScan(results pgx.BatchResults) ([]ListThreadFilesRow, error)
+
+	ShowFile(ctx context.Context, params ShowFileParams) (ShowFileRow, error)
+	// ShowFileBatch enqueues a ShowFile query into batch to be executed
+	// later by the batch.
+	ShowFileBatch(batch genericBatch, params ShowFileParams)
+	// ShowFileScan scans the result of an executed ShowFileBatch query.
+	ShowFileScan(results pgx.BatchResults) (ShowFileRow, error)
 }
 
 type DBQuerier struct {
@@ -161,6 +182,15 @@ func PrepareAllQueries(ctx context.Context, p preparer) error {
 	}
 	if _, err := p.Prepare(ctx, listThreadPostsSQL, listThreadPostsSQL); err != nil {
 		return fmt.Errorf("prepare query 'ListThreadPosts': %w", err)
+	}
+	if _, err := p.Prepare(ctx, listPostFilesSQL, listPostFilesSQL); err != nil {
+		return fmt.Errorf("prepare query 'ListPostFiles': %w", err)
+	}
+	if _, err := p.Prepare(ctx, listThreadFilesSQL, listThreadFilesSQL); err != nil {
+		return fmt.Errorf("prepare query 'ListThreadFiles': %w", err)
+	}
+	if _, err := p.Prepare(ctx, showFileSQL, showFileSQL); err != nil {
+		return fmt.Errorf("prepare query 'ShowFile': %w", err)
 	}
 	return nil
 }
@@ -590,6 +620,184 @@ func (q *DBQuerier) ListThreadPostsScan(results pgx.BatchResults) ([]ListThreadP
 		return nil, fmt.Errorf("close ListThreadPostsBatch rows: %w", err)
 	}
 	return items, err
+}
+
+const listPostFilesSQL = `SELECT post_id, idx, path, extension, mimetype, bytes, original_name
+FROM files
+WHERE board_id = $1
+AND post_id = ANY ($2::BIGINT[])
+ORDER BY post_id, idx
+;`
+
+type ListPostFilesRow struct {
+	PostID       *int           `json:"post_id"`
+	Idx          *int16         `json:"idx"`
+	Path         pgtype.Varchar `json:"path"`
+	Extension    pgtype.Varchar `json:"extension"`
+	Mimetype     pgtype.Varchar `json:"mimetype"`
+	Bytes        *int32         `json:"bytes"`
+	OriginalName pgtype.Varchar `json:"original_name"`
+}
+
+// ListPostFiles implements Querier.ListPostFiles.
+func (q *DBQuerier) ListPostFiles(ctx context.Context, boardID int32, postIds []int) ([]ListPostFilesRow, error) {
+	ctx = context.WithValue(ctx, "pggen_query_name", "ListPostFiles")
+	rows, err := q.conn.Query(ctx, listPostFilesSQL, boardID, postIds)
+	if err != nil {
+		return nil, fmt.Errorf("query ListPostFiles: %w", err)
+	}
+	defer rows.Close()
+	items := []ListPostFilesRow{}
+	for rows.Next() {
+		var item ListPostFilesRow
+		if err := rows.Scan(&item.PostID, &item.Idx, &item.Path, &item.Extension, &item.Mimetype, &item.Bytes, &item.OriginalName); err != nil {
+			return nil, fmt.Errorf("scan ListPostFiles row: %w", err)
+		}
+		items = append(items, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("close ListPostFiles rows: %w", err)
+	}
+	return items, err
+}
+
+// ListPostFilesBatch implements Querier.ListPostFilesBatch.
+func (q *DBQuerier) ListPostFilesBatch(batch genericBatch, boardID int32, postIds []int) {
+	batch.Queue(listPostFilesSQL, boardID, postIds)
+}
+
+// ListPostFilesScan implements Querier.ListPostFilesScan.
+func (q *DBQuerier) ListPostFilesScan(results pgx.BatchResults) ([]ListPostFilesRow, error) {
+	rows, err := results.Query()
+	if err != nil {
+		return nil, fmt.Errorf("query ListPostFilesBatch: %w", err)
+	}
+	defer rows.Close()
+	items := []ListPostFilesRow{}
+	for rows.Next() {
+		var item ListPostFilesRow
+		if err := rows.Scan(&item.PostID, &item.Idx, &item.Path, &item.Extension, &item.Mimetype, &item.Bytes, &item.OriginalName); err != nil {
+			return nil, fmt.Errorf("scan ListPostFilesBatch row: %w", err)
+		}
+		items = append(items, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("close ListPostFilesBatch rows: %w", err)
+	}
+	return items, err
+}
+
+const listThreadFilesSQL = `SELECT post_id, idx, path, extension, mimetype, bytes, original_name
+FROM files
+WHERE board_id = $1
+AND thread_id = $2
+ORDER BY post_id, idx
+;`
+
+type ListThreadFilesRow struct {
+	PostID       *int           `json:"post_id"`
+	Idx          *int16         `json:"idx"`
+	Path         pgtype.Varchar `json:"path"`
+	Extension    pgtype.Varchar `json:"extension"`
+	Mimetype     pgtype.Varchar `json:"mimetype"`
+	Bytes        *int32         `json:"bytes"`
+	OriginalName pgtype.Varchar `json:"original_name"`
+}
+
+// ListThreadFiles implements Querier.ListThreadFiles.
+func (q *DBQuerier) ListThreadFiles(ctx context.Context, boardID int32, threadID int) ([]ListThreadFilesRow, error) {
+	ctx = context.WithValue(ctx, "pggen_query_name", "ListThreadFiles")
+	rows, err := q.conn.Query(ctx, listThreadFilesSQL, boardID, threadID)
+	if err != nil {
+		return nil, fmt.Errorf("query ListThreadFiles: %w", err)
+	}
+	defer rows.Close()
+	items := []ListThreadFilesRow{}
+	for rows.Next() {
+		var item ListThreadFilesRow
+		if err := rows.Scan(&item.PostID, &item.Idx, &item.Path, &item.Extension, &item.Mimetype, &item.Bytes, &item.OriginalName); err != nil {
+			return nil, fmt.Errorf("scan ListThreadFiles row: %w", err)
+		}
+		items = append(items, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("close ListThreadFiles rows: %w", err)
+	}
+	return items, err
+}
+
+// ListThreadFilesBatch implements Querier.ListThreadFilesBatch.
+func (q *DBQuerier) ListThreadFilesBatch(batch genericBatch, boardID int32, threadID int) {
+	batch.Queue(listThreadFilesSQL, boardID, threadID)
+}
+
+// ListThreadFilesScan implements Querier.ListThreadFilesScan.
+func (q *DBQuerier) ListThreadFilesScan(results pgx.BatchResults) ([]ListThreadFilesRow, error) {
+	rows, err := results.Query()
+	if err != nil {
+		return nil, fmt.Errorf("query ListThreadFilesBatch: %w", err)
+	}
+	defer rows.Close()
+	items := []ListThreadFilesRow{}
+	for rows.Next() {
+		var item ListThreadFilesRow
+		if err := rows.Scan(&item.PostID, &item.Idx, &item.Path, &item.Extension, &item.Mimetype, &item.Bytes, &item.OriginalName); err != nil {
+			return nil, fmt.Errorf("scan ListThreadFilesBatch row: %w", err)
+		}
+		items = append(items, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("close ListThreadFilesBatch rows: %w", err)
+	}
+	return items, err
+}
+
+const showFileSQL = `SELECT extension, path, mimetype, bytes
+FROM files
+WHERE board_id = $1
+AND thread_id = $2
+AND post_id = $3
+AND idx = $4
+;`
+
+type ShowFileParams struct {
+	BoardID  int32
+	ThreadID int
+	PostID   int
+	Idx      int16
+}
+
+type ShowFileRow struct {
+	Extension pgtype.Varchar `json:"extension"`
+	Path      pgtype.Varchar `json:"path"`
+	Mimetype  pgtype.Varchar `json:"mimetype"`
+	Bytes     int32          `json:"bytes"`
+}
+
+// ShowFile implements Querier.ShowFile.
+func (q *DBQuerier) ShowFile(ctx context.Context, params ShowFileParams) (ShowFileRow, error) {
+	ctx = context.WithValue(ctx, "pggen_query_name", "ShowFile")
+	row := q.conn.QueryRow(ctx, showFileSQL, params.BoardID, params.ThreadID, params.PostID, params.Idx)
+	var item ShowFileRow
+	if err := row.Scan(&item.Extension, &item.Path, &item.Mimetype, &item.Bytes); err != nil {
+		return item, fmt.Errorf("query ShowFile: %w", err)
+	}
+	return item, nil
+}
+
+// ShowFileBatch implements Querier.ShowFileBatch.
+func (q *DBQuerier) ShowFileBatch(batch genericBatch, params ShowFileParams) {
+	batch.Queue(showFileSQL, params.BoardID, params.ThreadID, params.PostID, params.Idx)
+}
+
+// ShowFileScan implements Querier.ShowFileScan.
+func (q *DBQuerier) ShowFileScan(results pgx.BatchResults) (ShowFileRow, error) {
+	row := results.QueryRow()
+	var item ShowFileRow
+	if err := row.Scan(&item.Extension, &item.Path, &item.Mimetype, &item.Bytes); err != nil {
+		return item, fmt.Errorf("scan ShowFileBatch row: %w", err)
+	}
+	return item, nil
 }
 
 // textPreferrer wraps a pgtype.ValueTranscoder and sets the preferred encoding

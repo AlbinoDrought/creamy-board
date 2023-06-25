@@ -29,7 +29,7 @@ func (wp *HTMLWebPortal) ListBoards(w http.ResponseWriter, r *http.Request) {
 }
 
 func (wp *HTMLWebPortal) ListBoardThreads(w http.ResponseWriter, r *http.Request, boardSlug string, page int) {
-	boardRecentThreads, err := wp.Repo.ShowBoardListRecenthreads(r.Context(), boardSlug, page)
+	boardRecentThreads, err := wp.Repo.ShowBoardListRecentThreads(r.Context(), boardSlug, page)
 	if err != nil {
 		log.Warnf("failed to list board %v threads: %v", boardSlug, err)
 		htmlUnhandled(w) // todo: could be 404 (boardslug)

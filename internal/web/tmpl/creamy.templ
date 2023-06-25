@@ -7,8 +7,38 @@ import (
 
 // formatters:
 
+func humanizeBytes(b int) string {
+	const unit = 1000
+	if b < unit {
+		return fmt.Sprintf("%d B", b)
+	}
+	div, exp := unit, 0
+	for n := b / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.2f %cB", float64(b)/float64(div), "kMGTPE"[exp])
+}
+
+func nameFile(thread *repo.Thread, post *repo.Post, file *repo.File) string {
+	return fmt.Sprintf(
+		"%v-%v-%v.%v", 
+		thread.ID,
+		post.ID,
+		file.Index,
+		file.Extension,
+	)
+}
+
 func linkBoard(board *repo.Board) templ.SafeURL {
 	return templ.SafeURL(fmt.Sprintf("/%v/", board.Slug))
+}
+func linkFile(board *repo.Board, thread *repo.Thread, post *repo.Post, file *repo.File) templ.SafeURL {
+	return templ.SafeURL(fmt.Sprintf(
+		"/%v/src/%v",
+		board.Slug,
+		nameFile(thread, post, file),
+	))
 }
 func linkThreadShow(board *repo.Board, thread *repo.Thread) templ.SafeURL {
 	return templ.SafeURL(fmt.Sprintf("/%v/res/%v.html", board.Slug, thread.ID))
@@ -49,12 +79,50 @@ templ threadHead(board *repo.Board, thread *repo.Thread, post *repo.Post, inThre
 	}
 }
 
+templ fileFull(board *repo.Board, thread *repo.Thread, post *repo.Post, file *repo.File) {
+	<div class="file">
+		<div class="file__info">
+			File:
+			<a href={ linkFile(board, thread, post, file) } target="_blank">
+				{ nameFile(thread, post, file) }
+			</a>&nbsp;(<span>
+				{ humanizeBytes(file.Bytes) }
+			</span><wbr />,
+			<a href={ linkFile(board, thread, post, file) } download={ file.OriginalName } title="Save as original filename">
+				{ file.OriginalName }
+			</a><wbr />)
+		</div>
+		<div class="file__img-container">
+			<a href={ linkFile(board, thread, post, file) } target="_blank">
+				<img class="file__img" src={ string(linkFile(board, thread, post, file)) } />
+			</a>
+		</div>
+	</div>
+}
+
+func postFilesClass(files []repo.File) string {
+	if len(files) <= 1 {
+		return "post__files"
+	}
+
+	return "post__files post__files--multi"
+}
+
+templ postFilesFull(board *repo.Board, thread *repo.Thread, post *repo.Post, files []repo.File) {
+	<div class={ postFilesClass(files) }>
+		for _, file := range post.Files {
+			@fileFull(board, thread, post, &file)
+		}
+	</div>
+}
+
 templ postFull(board *repo.Board, thread *repo.Thread, post *repo.Post) {
 	<div class="post">
 		<div class="post__content">
 			<div class="post__head">
 				@postHead(board, thread, post)
 			</div>
+			@postFilesFull(board, thread, post, post.Files)
 			<div class="post__body">
 				{ post.Body }
 			</div>
@@ -69,6 +137,7 @@ templ threadFull(board *repo.Board, thread *repo.Thread, main *repo.Post, other 
 				<div class="post__head">
 					@threadHead(board, thread, main, inThread)
 				</div>
+				@postFilesFull(board, thread, main, main.Files)
 				<div class="post__body">
 					{ main.Body }
 				</div>

@@ -21,6 +21,8 @@ CREATE TABLE threads (
 , FOREIGN KEY (board_id) REFERENCES boards (board_id) ON DELETE CASCADE
 );
 
+CREATE INDEX board_threads ON threads (board_id);
+
 CREATE TABLE posts (
   board_id INTEGER NOT NULL
 , thread_id BIGINT NOT NULL
@@ -51,18 +53,27 @@ CREATE TABLE files (
 , FOREIGN KEY (board_id, thread_id, post_id) REFERENCES posts (board_id, thread_id, post_id) ON DELETE CASCADE
 );
 
+CREATE INDEX thread_files ON files (board_id, thread_id);
 CREATE INDEX post_files ON files (board_id, thread_id, post_id);
 
 INSERT INTO boards (slug, title, tagline) VALUES
   ('cb', 'Creamy Board', 'Welcome Home')
 ;
 INSERT INTO board_post_counters (board_id, next_post_id) VALUES
-  (1, 3)
+  (1, 4)
 ;
 INSERT INTO threads (board_id, thread_id, subject) VALUES
   (1, 1, 'Welcome to Creamy Board')
 ;
 INSERT INTO posts (board_id, thread_id, post_id, author, body) VALUES
-  (1, 1, 1, 'Migrator', 'Test thread body please ignore')
-, (1, 1, 2, 'Migrator', 'Test post body please ignore')
+  (1, 1, 1, 'Migrator', E'Test thread body please ignore\n\n(pic related)')
+, (1, 1, 2, 'Migrator', 'chicken dog')
+, (1, 1, 3, 'Meowgrator', 'cat')
+;
+
+INSERT INTO files (board_id, thread_id, post_id, idx, path, extension, mimetype, bytes, original_name) VALUES
+  (1, 1, 1, 0, 'test_llama.jpg', 'jpg', 'image/jpeg', 101036, 'llama.jpg')
+, (1, 1, 2, 0, 'test_chimkin.jpg', 'jpg', 'image/jpeg', 179262, 'chimkin.jpg')
+, (1, 1, 2, 1, 'test_dog.jpg', 'jpg', 'image/jpeg', 54955, 'dog.jpg')
+, (1, 1, 3, 0, 'test_cat.jpg', 'jpg', 'image/jpeg', 84949, 'cat.jpg')
 ;

@@ -20,6 +20,38 @@ func boardFromShow(b *Board, row queries.ShowBoardFromSlugRow) {
 	b.Tagline = row.Tagline.String
 }
 
+func fileFromListPost(f *File, row queries.ListPostFilesRow) {
+	f.Index = int(*row.Idx)
+	f.InternalPath = row.Path.String
+	f.Extension = row.Extension.String
+	f.MimeType = row.Mimetype.String
+	f.Bytes = int(*row.Bytes)
+	f.OriginalName = row.OriginalName.String
+}
+
+func fileFromListThread(f *File, row queries.ListThreadFilesRow) {
+	f.Index = int(*row.Idx)
+	f.InternalPath = row.Path.String
+	f.Extension = row.Extension.String
+	f.MimeType = row.Mimetype.String
+	f.Bytes = int(*row.Bytes)
+	f.OriginalName = row.OriginalName.String
+}
+
+func postFromRecentPost(p *Post, row queries.ListThreadRecentPostsRow) {
+	p.ID = uint64(*row.PostID)
+	p.CreatedAt = row.CreatedAt.Time.Format(time.RFC3339)
+	p.Author = row.Author.String
+	p.Body = *row.Body
+}
+
+func postFromThreadPost(p *Post, row queries.ListThreadPostsRow) {
+	p.ID = uint64(*row.PostID)
+	p.CreatedAt = row.CreatedAt.Time.Format(time.RFC3339)
+	p.Author = row.Author.String
+	p.Body = *row.Body
+}
+
 func recentThreadFromActive(rt *RecentThread, row queries.ListActiveBoardThreadsRow) {
 	rt.Thread.ID = uint64(*row.ThreadID)
 	rt.Thread.CreatedAt = row.CreatedAt.Time.Format(time.RFC3339)
@@ -32,16 +64,6 @@ func recentThreadFromActive(rt *RecentThread, row queries.ListActiveBoardThreads
 	rt.MainPost.Body = *row.Body
 }
 
-func recentThreadLoadRecentPosts(rt *RecentThread, rows []queries.ListThreadRecentPostsRow) {
-	rt.RecentPosts = make([]Post, len(rows))
-	for i, row := range rows {
-		rt.RecentPosts[i].ID = uint64(*row.PostID)
-		rt.RecentPosts[i].CreatedAt = row.CreatedAt.Time.Format(time.RFC3339)
-		rt.RecentPosts[i].Author = row.Author.String
-		rt.RecentPosts[i].Body = *row.Body
-	}
-}
-
 func fullThreadFromShow(ft *FullThread, row queries.ShowThreadRow) {
 	ft.Thread.ID = uint64(*row.ThreadID)
 	ft.Thread.CreatedAt = row.CreatedAt.Time.Format(time.RFC3339)
@@ -52,16 +74,6 @@ func fullThreadFromShow(ft *FullThread, row queries.ShowThreadRow) {
 	ft.MainPost.CreatedAt = ft.Thread.CreatedAt
 	ft.MainPost.Author = row.Author.String
 	ft.MainPost.Body = *row.Body
-}
-
-func fullThreadLoadAllPosts(ft *FullThread, rows []queries.ListThreadPostsRow) {
-	ft.AllPosts = make([]Post, len(rows))
-	for i, row := range rows {
-		ft.AllPosts[i].ID = uint64(*row.PostID)
-		ft.AllPosts[i].CreatedAt = row.CreatedAt.Time.Format(time.RFC3339)
-		ft.AllPosts[i].Author = row.Author.String
-		ft.AllPosts[i].Body = *row.Body
-	}
 }
 
 type DBRepo struct {
@@ -84,7 +96,7 @@ func (r *DBRepo) ListBoards(ctx context.Context) ([]Board, error) {
 
 var ErrPageInvalid = errors.New("page invalid, must be 1 or greater")
 
-func (r *DBRepo) ShowBoardListRecenthreads(ctx context.Context, boardSlug string, page int) (*BoardRecentThreads, error) {
+func (r *DBRepo) ShowBoardListRecentThreads(ctx context.Context, boardSlug string, page int) (*BoardRecentThreads, error) {
 	if page < 0 {
 		return nil, ErrPageInvalid
 	}
@@ -103,6 +115,7 @@ func (r *DBRepo) ShowBoardListRecenthreads(ctx context.Context, boardSlug string
 		return nil, err
 	}
 
+	// query recent posts for all threads
 	threadIDs := make([]int, len(dbThreads))
 	for i := range dbThreads {
 		threadIDs[i] = *dbThreads[i].ThreadID
@@ -113,14 +126,52 @@ func (r *DBRepo) ShowBoardListRecenthreads(ctx context.Context, boardSlug string
 		return nil, err
 	}
 
-	dbRecentPostsByThreads := make(map[int][]queries.ListThreadRecentPostsRow, len(dbThreads))
-	for _, dbRecentPost := range dbRecentPosts {
-		dbRecentPostsByThread, ok := dbRecentPostsByThreads[*dbRecentPost.ThreadID]
+	// query files for all posts
+	postIDs := make([]int, len(dbRecentPosts)+1)
+	for i, dbRecentPost := range dbRecentPosts {
+		postIDs[i] = *dbRecentPost.PostID
+	}
+
+	threadsAndPosts := len(dbThreads) + len(dbRecentPosts)
+
+	dbFiles, err := r.Querier.ListPostFiles(ctx, dbBoard.BoardID, append(threadIDs, postIDs...))
+	if err != nil {
+		return nil, err
+	}
+
+	// map of post ID -> post files
+	filesByPosts := make(map[int][]File, threadsAndPosts)
+	for _, dbFile := range dbFiles {
+		file := File{}
+		fileFromListPost(&file, dbFile)
+
+		filesByPost, ok := filesByPosts[*dbFile.PostID]
 		if !ok {
-			dbRecentPostsByThread = []queries.ListThreadRecentPostsRow{}
+			filesByPost = []File{}
 		}
-		dbRecentPostsByThread = append(dbRecentPostsByThread, dbRecentPost)
-		dbRecentPostsByThreads[*dbRecentPost.ThreadID] = dbRecentPostsByThread
+		filesByPost = append(filesByPost, file)
+		filesByPosts[*dbFile.PostID] = filesByPost
+	}
+
+	// map of thread ID -> recent posts
+	recentPostsByThreads := make(map[int][]Post, len(dbThreads))
+	for _, dbRecentPost := range dbRecentPosts {
+		post := Post{}
+		postFromRecentPost(&post, dbRecentPost)
+
+		files, ok := filesByPosts[int(post.ID)]
+		if ok {
+			post.Files = files
+		} else {
+			post.Files = []File{}
+		}
+
+		recentPostsByThread, ok := recentPostsByThreads[*dbRecentPost.ThreadID]
+		if !ok {
+			recentPostsByThread = []Post{}
+		}
+		recentPostsByThread = append(recentPostsByThread, post)
+		recentPostsByThreads[*dbRecentPost.ThreadID] = recentPostsByThread
 	}
 
 	board := Board{}
@@ -129,11 +180,19 @@ func (r *DBRepo) ShowBoardListRecenthreads(ctx context.Context, boardSlug string
 	recentThreads := make([]RecentThread, len(dbThreads))
 	for i := range dbThreads {
 		recentThreadFromActive(&recentThreads[i], dbThreads[i])
-		dbRecentPosts, ok := dbRecentPostsByThreads[*dbThreads[i].ThreadID]
+
+		files, ok := filesByPosts[int(*dbThreads[i].ThreadID)]
 		if ok {
-			recentThreadLoadRecentPosts(&recentThreads[i], dbRecentPosts)
+			recentThreads[i].MainPost.Files = files
 		} else {
-			recentThreadLoadRecentPosts(&recentThreads[i], []queries.ListThreadRecentPostsRow{})
+			recentThreads[i].MainPost.Files = []File{}
+		}
+
+		recentPosts, ok := recentPostsByThreads[*dbThreads[i].ThreadID]
+		if ok {
+			recentThreads[i].RecentPosts = recentPosts
+		} else {
+			recentThreads[i].RecentPosts = []Post{}
 		}
 	}
 
@@ -159,12 +218,52 @@ func (r *DBRepo) ShowThread(ctx context.Context, boardSlug string, threadID int)
 		return nil, err
 	}
 
+	threadsAndPosts := 1 + len(dbPosts)
+
+	dbFiles, err := r.Querier.ListThreadFiles(ctx, dbBoard.BoardID, threadID)
+	if err != nil {
+		return nil, err
+	}
+
+	// map of post ID -> post files
+	filesByPosts := make(map[int][]File, threadsAndPosts)
+	for _, dbFile := range dbFiles {
+		file := File{}
+		fileFromListThread(&file, dbFile)
+
+		filesByPost, ok := filesByPosts[*dbFile.PostID]
+		if !ok {
+			filesByPost = []File{}
+		}
+		filesByPost = append(filesByPost, file)
+		filesByPosts[*dbFile.PostID] = filesByPost
+	}
+
+	posts := make([]Post, len(dbPosts))
+	for i := range dbPosts {
+		postFromThreadPost(&posts[i], dbPosts[i])
+
+		files, ok := filesByPosts[int(posts[i].ID)]
+		if ok {
+			posts[i].Files = files
+		} else {
+			posts[i].Files = []File{}
+		}
+	}
+
 	board := Board{}
 	boardFromShow(&board, dbBoard)
 
 	fullThread := FullThread{}
 	fullThreadFromShow(&fullThread, dbThread)
-	fullThreadLoadAllPosts(&fullThread, dbPosts)
+	fullThread.AllPosts = posts
+
+	files, ok := filesByPosts[int(fullThread.MainPost.ID)]
+	if ok {
+		fullThread.MainPost.Files = files
+	} else {
+		fullThread.MainPost.Files = []File{}
+	}
 
 	return &BoardFullThread{
 		Board:      board,

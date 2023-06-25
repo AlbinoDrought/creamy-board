@@ -66,3 +66,28 @@ AND posts.thread_id = pggen.arg('thread_id')
 AND posts.post_id != pggen.arg('thread_id') -- ignore the thread post
 ORDER BY posts.post_id
 ;
+
+-- name: ListPostFiles :many
+SELECT post_id, idx, path, extension, mimetype, bytes, original_name
+FROM files
+WHERE board_id = pggen.arg('board_id')
+AND post_id = ANY (pggen.arg('post_ids')::BIGINT[])
+ORDER BY post_id, idx
+;
+
+-- name: ListThreadFiles :many
+SELECT post_id, idx, path, extension, mimetype, bytes, original_name
+FROM files
+WHERE board_id = pggen.arg('board_id')
+AND thread_id = pggen.arg('thread_id')
+ORDER BY post_id, idx
+;
+
+-- name: ShowFile :one
+SELECT extension, path, mimetype, bytes
+FROM files
+WHERE board_id = pggen.arg('board_id')
+AND thread_id = pggen.arg('thread_id')
+AND post_id = pggen.arg('post_id')
+AND idx = pggen.arg('idx')
+;

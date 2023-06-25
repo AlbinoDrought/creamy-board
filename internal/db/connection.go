@@ -4,17 +4,17 @@ import (
 	"context"
 	"time"
 
-	pgx4 "github.com/jackc/pgx/v4"
+	pgxpool4 "github.com/jackc/pgx/v4/pgxpool"
 	pgx5 "github.com/jackc/pgx/v5"
 )
 
 // pg-gen only supports pgx v4 at the moment...
-func Connect4(ctx context.Context, dsn string) (conn *pgx4.Conn, err error) {
+func ConnectPool4(ctx context.Context, dsn string) (conn *pgxpool4.Pool, err error) {
 	const attempts = 5
 	attempt := 0
 
 	for {
-		conn, err = pgx4.Connect(ctx, dsn)
+		conn, err = pgxpool4.Connect(ctx, dsn)
 		if err == nil {
 			return
 		}

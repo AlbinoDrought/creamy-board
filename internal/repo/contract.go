@@ -15,11 +15,22 @@ type Thread struct {
 	Subject   string `json:"subject"`
 }
 
+type File struct {
+	Index        int    `json:"index"`
+	Extension    string `json:"extension"`
+	MimeType     string `json:"mime_type"`
+	Bytes        int    `json:"bytes"`
+	OriginalName string `json:"original_name"`
+
+	InternalPath string `json:"-"`
+}
+
 type Post struct {
 	ID        uint64 `json:"id"`
 	CreatedAt string `json:"created_at"`
 	Author    string `json:"author"`
 	Body      string `json:"body"`
+	Files     []File `json:"files"`
 }
 
 type RecentThread struct {
@@ -46,6 +57,6 @@ type BoardFullThread struct {
 
 type CreamyBoard interface {
 	ListBoards(ctx context.Context) ([]Board, error)
-	ShowBoardListRecenthreads(ctx context.Context, boardSlug string, page int) (*BoardRecentThreads, error)
+	ShowBoardListRecentThreads(ctx context.Context, boardSlug string, page int) (*BoardRecentThreads, error)
 	ShowThread(ctx context.Context, boardSlug string, threadID int) (*BoardFullThread, error)
 }

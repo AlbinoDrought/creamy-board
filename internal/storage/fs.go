@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"io"
 	"os"
 	"path/filepath"
@@ -17,15 +18,15 @@ func safeFsPath(root string, user string) string {
 	)
 }
 
-func (d *FSDriver) Boot() error {
+func (d *FSDriver) Boot(ctx context.Context) error {
 	return os.MkdirAll(d.Path, os.ModePerm)
 }
 
-func (d *FSDriver) Read(path string) (io.ReadCloser, error) {
+func (d *FSDriver) Read(ctx context.Context, path string) (io.ReadCloser, error) {
 	return os.Open(safeFsPath(d.Path, path))
 }
 
-func (d *FSDriver) Write(path string, stream io.ReadSeeker) error {
+func (d *FSDriver) Write(ctx context.Context, path string, stream io.Reader) error {
 	handle, err := os.Create(safeFsPath(d.Path, path))
 	if err != nil {
 		return err
@@ -39,7 +40,7 @@ func (d *FSDriver) Write(path string, stream io.ReadSeeker) error {
 	return handle.Close()
 }
 
-func (d *FSDriver) Delete(path string) error {
+func (d *FSDriver) Delete(ctx context.Context, path string) error {
 	return os.Remove(safeFsPath(d.Path, path))
 }
 
