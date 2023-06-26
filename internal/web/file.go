@@ -49,5 +49,6 @@ func ServeFile(w http.ResponseWriter, r *http.Request, boardSlug string, threadI
 
 	w.Header().Add("Content-Type", dbFile.Mimetype.String)
 	w.Header().Add("Content-Disposition", "inline")
+	w.Header().Add("Cache-Control", "public, max-age=31536000, immutable")
 	io.Copy(w, handle)
 }
