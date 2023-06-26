@@ -153,10 +153,16 @@ templ threadFull(board *repo.Board, thread *repo.Thread, main *repo.Post, other 
 	</div>
 }
 
-templ postForm() {
+templ postForm(errorText string) {
 	<form method="POST" enctype="multipart/form-data">
 		<table class="form">
 			<tbody>
+				if (errorText != "") {
+					<tr class="form__error">
+						<th>Error</th>
+						<td>{ errorText }</td>
+					</tr>
+				}
 				<tr>
 					<th><label for="author">Name</label></th>
 					<td><input type="text" id="author" name="author" /></td>
@@ -225,10 +231,10 @@ templ ListBoards(boards []repo.Board) {
 	}
 }
 
-templ ShowBoardAndRecents(brt *repo.BoardRecentThreads) {
+templ ShowBoardAndRecents(brt *repo.BoardRecentThreads, errorText string) {
 	@page(textBoard(&brt.Board), brt.Board.Tagline) {
 		@wrapperBoard(&brt.Board) {
-			@postForm()
+			@postForm(errorText)
 			<hr />
 			for _, thread := range brt.RecentThreads {
 				@threadFull(&brt.Board, &thread.Thread, &thread.MainPost, thread.RecentPosts, false)
@@ -237,7 +243,7 @@ templ ShowBoardAndRecents(brt *repo.BoardRecentThreads) {
 	}
 }
 
-templ ShowFullThread(bft *repo.BoardFullThread) {
+templ ShowFullThread(bft *repo.BoardFullThread, errorText string) {
 	@page(textThread(&bft.Board, &bft.FullThread.MainPost), bft.FullThread.MainPost.Body) {
 		@wrapperBoard(&bft.Board) {
 			<div class="thread-return-container">
@@ -247,7 +253,7 @@ templ ShowFullThread(bft *repo.BoardFullThread) {
 					<a href={ linkBoard(&bft.Board) }>[Return]</a>
 				</div>
 			</div>
-			@postForm()
+			@postForm(errorText)
 			<hr />
 			@threadFull(&bft.Board, &bft.FullThread.Thread, &bft.FullThread.MainPost, bft.FullThread.AllPosts, true)
 		}

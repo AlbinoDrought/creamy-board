@@ -20,6 +20,13 @@ func htmlUnhandled(w http.ResponseWriter) {
 	http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 }
 
+var (
+	UIErrorThreadBodyRequired     = "thread_body_required"
+	UIErrorThreadFileRequired     = "thread_file_required"
+	UIErrorUnsupportedMimetype    = "unsupported_mimetype"
+	UIErrorPostBodyOrFileRequired = "post_body_or_file_required"
+)
+
 type HTMLWebPortal struct {
 	Repo repo.CreamyBoard
 }
@@ -44,8 +51,19 @@ func (wp *HTMLWebPortal) ListBoardThreads(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	var errorText string
+	prevError := r.URL.Query().Get("error")
+	switch prevError {
+	case UIErrorThreadBodyRequired:
+		errorText = "Threads must have a body"
+	case UIErrorThreadFileRequired:
+		errorText = "Threads must have at least one file"
+	case UIErrorUnsupportedMimetype:
+		errorText = "Thread contained an unsupported filetype"
+	}
+
 	w.Header().Add("Content-Type", "text/html")
-	tmpl.ShowBoardAndRecents(boardRecentThreads).Render(r.Context(), w)
+	tmpl.ShowBoardAndRecents(boardRecentThreads, errorText).Render(r.Context(), w)
 }
 
 func (wp *HTMLWebPortal) ShowThread(w http.ResponseWriter, r *http.Request, boardSlug string, threadID int) {
@@ -56,8 +74,17 @@ func (wp *HTMLWebPortal) ShowThread(w http.ResponseWriter, r *http.Request, boar
 		return
 	}
 
+	var errorText string
+	prevError := r.URL.Query().Get("error")
+	switch prevError {
+	case UIErrorPostBodyOrFileRequired:
+		errorText = "Posts must have a body or file"
+	case UIErrorUnsupportedMimetype:
+		errorText = "Post contained an unsupported filetype"
+	}
+
 	w.Header().Add("Content-Type", "text/html")
-	tmpl.ShowFullThread(boardFullThread).Render(r.Context(), w)
+	tmpl.ShowFullThread(boardFullThread, errorText).Render(r.Context(), w)
 }
 
 var acceptedMimes = []string{
@@ -84,6 +111,15 @@ func (wp *HTMLWebPortal) SubmitThread(w http.ResponseWriter, r *http.Request, bo
 		Files:   []repo.SubmitPostFile{},
 	}
 
+	if req.Author == "" {
+		req.Author = "Anonymous"
+	}
+
+	if req.Body == "" {
+		http.Redirect(w, r, fmt.Sprintf("/%v/index.html?error=%v", boardSlug, UIErrorThreadBodyRequired), http.StatusFound)
+		return
+	}
+
 	created := false
 	// clean up temp files if req fails
 	defer func() {
@@ -109,7 +145,7 @@ func (wp *HTMLWebPortal) SubmitThread(w http.ResponseWriter, r *http.Request, bo
 
 		mime, _ := mimetype.DetectReader(formFile)
 		if mime == nil || !htmlMimeTypeAllowed(mime) {
-			http.Redirect(w, r, fmt.Sprintf("/%v/index.html?error=unsupported_mimetype", boardSlug), http.StatusFound)
+			http.Redirect(w, r, fmt.Sprintf("/%v/index.html?error=%v", boardSlug, UIErrorUnsupportedMimetype), http.StatusFound)
 			return
 		}
 		extension := strings.TrimPrefix(mime.Extension(), ".")
@@ -134,6 +170,11 @@ func (wp *HTMLWebPortal) SubmitThread(w http.ResponseWriter, r *http.Request, bo
 			OriginalName: formFileHeader.Filename,
 			InternalPath: filePath,
 		})
+	}
+
+	if len(req.Files) < 1 {
+		http.Redirect(w, r, fmt.Sprintf("/%v/index.html?error=%v", boardSlug, UIErrorThreadFileRequired), http.StatusFound)
+		return
 	}
 
 	threadID, err := wp.Repo.SubmitThread(r.Context(), boardSlug, req)
@@ -155,6 +196,10 @@ func (wp *HTMLWebPortal) SubmitThreadPost(w http.ResponseWriter, r *http.Request
 		Files:   []repo.SubmitPostFile{},
 	}
 
+	if req.Author == "" {
+		req.Author = "Anonymous"
+	}
+
 	created := false
 	// clean up temp files if req fails
 	defer func() {
@@ -180,7 +225,7 @@ func (wp *HTMLWebPortal) SubmitThreadPost(w http.ResponseWriter, r *http.Request
 
 		mime, _ := mimetype.DetectReader(formFile)
 		if mime == nil || !htmlMimeTypeAllowed(mime) {
-			http.Redirect(w, r, fmt.Sprintf("/%v/index.html?error=unsupported_mimetype", boardSlug), http.StatusFound)
+			http.Redirect(w, r, fmt.Sprintf("/%v/res/%v.html?error=%v", boardSlug, threadID, UIErrorUnsupportedMimetype), http.StatusFound)
 			return
 		}
 		extension := strings.TrimPrefix(mime.Extension(), ".")
@@ -205,6 +250,11 @@ func (wp *HTMLWebPortal) SubmitThreadPost(w http.ResponseWriter, r *http.Request
 			OriginalName: formFileHeader.Filename,
 			InternalPath: filePath,
 		})
+	}
+
+	if req.Body == "" && len(req.Files) < 1 {
+		http.Redirect(w, r, fmt.Sprintf("/%v/res/%v.html?error=%v", boardSlug, threadID, UIErrorPostBodyOrFileRequired), http.StatusFound)
+		return
 	}
 
 	postID, err := wp.Repo.SubmitThreadPost(r.Context(), boardSlug, threadID, req)

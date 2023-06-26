@@ -61,6 +61,11 @@ hr {
 .form * {
   font-size: 16px;
 }
+.form .form__error th, .form .form__error td {
+  background: var(--highlight2);
+  color: var(--background1);
+  padding: .5em;
+}
 .form th {
   background-color: var(--background2);
   color: var(--text2);
