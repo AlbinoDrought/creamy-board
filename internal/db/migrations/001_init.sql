@@ -100,7 +100,7 @@ post2 AS (
 ),
 post3 AS (
   INSERT INTO posts (board_id, thread_id, post_id, subject, author, body) VALUES
-    ((SELECT board_id FROM board), (SELECT thread_id FROM thread), board_post_seq_nextval((SELECT board_id FROM board)), 'meow', 'Meowgrator', 'cat')
+    ((SELECT board_id FROM board), (SELECT thread_id FROM thread), board_post_seq_nextval((SELECT board_id FROM board)), 'meow', 'Meowgrator', E'>meow\ncat')
   RETURNING post_id
 )
 INSERT INTO files (board_id, thread_id, post_id, idx, path, extension, mimetype, bytes, original_name) VALUES

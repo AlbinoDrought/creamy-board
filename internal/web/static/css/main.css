@@ -127,6 +127,9 @@ hr {
   word-wrap: break-word;
   white-space: pre-wrap;
 }
+.post__body .quote {
+  color: var(--highlight1);
+}
 
 .post__files {
   margin-bottom: .5em;
