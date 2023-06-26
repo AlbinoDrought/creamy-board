@@ -262,6 +262,7 @@ templ ShowFullThread(bft *repo.BoardFullThread, errorText string) {
 				</div>
 			</div>
 			@postForm(errorText, false)
+			<script type="text/javascript" src="/js/thread.js" />
 			<hr />
 			@threadFull(&bft.Board, &bft.FullThread.Thread, &bft.FullThread.MainPost, bft.FullThread.AllPosts, true)
 		}

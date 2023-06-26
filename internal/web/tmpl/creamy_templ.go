@@ -2122,6 +2122,33 @@ func ShowFullThread(bft *repo.BoardFullThread, errorText string) templ.Component
 				if err != nil {
 					return err
 				}
+				// Element (standard)
+				_, err = templBuffer.WriteString("<script")
+				if err != nil {
+					return err
+				}
+				// Element Attributes
+				_, err = templBuffer.WriteString(" type=\"text/javascript\"")
+				if err != nil {
+					return err
+				}
+				_, err = templBuffer.WriteString(" src=\"/js/thread.js\"")
+				if err != nil {
+					return err
+				}
+				_, err = templBuffer.WriteString(">")
+				if err != nil {
+					return err
+				}
+				_, err = templBuffer.WriteString("</script>")
+				if err != nil {
+					return err
+				}
+				// Whitespace (normalised)
+				_, err = templBuffer.WriteString(` `)
+				if err != nil {
+					return err
+				}
 				// Element (void)
 				_, err = templBuffer.WriteString("<hr>")
 				if err != nil {
