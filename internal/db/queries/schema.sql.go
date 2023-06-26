@@ -86,6 +86,13 @@ type Querier interface {
 	// ShowFileScan scans the result of an executed ShowFileBatch query.
 	ShowFileScan(results pgx.BatchResults) (ShowFileRow, error)
 
+	ShowFileThumb(ctx context.Context, params ShowFileThumbParams) (ShowFileThumbRow, error)
+	// ShowFileThumbBatch enqueues a ShowFileThumb query into batch to be executed
+	// later by the batch.
+	ShowFileThumbBatch(batch genericBatch, params ShowFileThumbParams)
+	// ShowFileThumbScan scans the result of an executed ShowFileThumbBatch query.
+	ShowFileThumbScan(results pgx.BatchResults) (ShowFileThumbRow, error)
+
 	SubmitThread(ctx context.Context, params SubmitThreadParams) (*int, error)
 	// SubmitThreadBatch enqueues a SubmitThread query into batch to be executed
 	// later by the batch.
@@ -221,6 +228,9 @@ func PrepareAllQueries(ctx context.Context, p preparer) error {
 	if _, err := p.Prepare(ctx, showFileSQL, showFileSQL); err != nil {
 		return fmt.Errorf("prepare query 'ShowFile': %w", err)
 	}
+	if _, err := p.Prepare(ctx, showFileThumbSQL, showFileThumbSQL); err != nil {
+		return fmt.Errorf("prepare query 'ShowFileThumb': %w", err)
+	}
 	if _, err := p.Prepare(ctx, submitThreadSQL, submitThreadSQL); err != nil {
 		return fmt.Errorf("prepare query 'SubmitThread': %w", err)
 	}
@@ -238,12 +248,16 @@ func PrepareAllQueries(ctx context.Context, p preparer) error {
 
 // PartialFile represents the Postgres composite type "partial_file".
 type PartialFile struct {
-	Idx          *int16         `json:"idx"`
-	Path         pgtype.Varchar `json:"path"`
-	Extension    pgtype.Varchar `json:"extension"`
-	Mimetype     pgtype.Varchar `json:"mimetype"`
-	Bytes        *int32         `json:"bytes"`
-	OriginalName pgtype.Varchar `json:"original_name"`
+	Idx            *int16         `json:"idx"`
+	Path           pgtype.Varchar `json:"path"`
+	Extension      pgtype.Varchar `json:"extension"`
+	Mimetype       pgtype.Varchar `json:"mimetype"`
+	Bytes          *int32         `json:"bytes"`
+	OriginalName   pgtype.Varchar `json:"original_name"`
+	ThumbPath      pgtype.Varchar `json:"thumb_path"`
+	ThumbExtension pgtype.Varchar `json:"thumb_extension"`
+	ThumbMimetype  pgtype.Varchar `json:"thumb_mimetype"`
+	ThumbBytes     *int32         `json:"thumb_bytes"`
 }
 
 // typeResolver looks up the pgtype.ValueTranscoder by Postgres type name.
@@ -343,6 +357,10 @@ func (tr *typeResolver) newPartialFile() pgtype.ValueTranscoder {
 		compositeField{name: "mimetype", typeName: "varchar", defaultVal: &pgtype.Varchar{}},
 		compositeField{name: "bytes", typeName: "int4", defaultVal: &pgtype.Int4{}},
 		compositeField{name: "original_name", typeName: "varchar", defaultVal: &pgtype.Varchar{}},
+		compositeField{name: "thumb_path", typeName: "varchar", defaultVal: &pgtype.Varchar{}},
+		compositeField{name: "thumb_extension", typeName: "varchar", defaultVal: &pgtype.Varchar{}},
+		compositeField{name: "thumb_mimetype", typeName: "varchar", defaultVal: &pgtype.Varchar{}},
+		compositeField{name: "thumb_bytes", typeName: "int4", defaultVal: &pgtype.Int4{}},
 	)
 }
 
@@ -356,6 +374,10 @@ func (tr *typeResolver) newPartialFileRaw(v PartialFile) []interface{} {
 		v.Mimetype,
 		v.Bytes,
 		v.OriginalName,
+		v.ThumbPath,
+		v.ThumbExtension,
+		v.ThumbMimetype,
+		v.ThumbBytes,
 	}
 }
 
@@ -779,7 +801,10 @@ func (q *DBQuerier) ListThreadPostsScan(results pgx.BatchResults) ([]ListThreadP
 	return items, err
 }
 
-const listPostFilesSQL = `SELECT post_id, idx, path, extension, mimetype, bytes, original_name
+const listPostFilesSQL = `SELECT 
+post_id, idx
+, path, extension, mimetype, bytes, original_name
+, thumb_path, thumb_extension, thumb_mimetype, thumb_bytes
 FROM files
 WHERE board_id = $1
 AND post_id = ANY ($2::BIGINT[])
@@ -787,13 +812,17 @@ ORDER BY post_id, idx
 ;`
 
 type ListPostFilesRow struct {
-	PostID       *int           `json:"post_id"`
-	Idx          *int16         `json:"idx"`
-	Path         pgtype.Varchar `json:"path"`
-	Extension    pgtype.Varchar `json:"extension"`
-	Mimetype     pgtype.Varchar `json:"mimetype"`
-	Bytes        *int32         `json:"bytes"`
-	OriginalName pgtype.Varchar `json:"original_name"`
+	PostID         *int           `json:"post_id"`
+	Idx            *int16         `json:"idx"`
+	Path           pgtype.Varchar `json:"path"`
+	Extension      pgtype.Varchar `json:"extension"`
+	Mimetype       pgtype.Varchar `json:"mimetype"`
+	Bytes          *int32         `json:"bytes"`
+	OriginalName   pgtype.Varchar `json:"original_name"`
+	ThumbPath      pgtype.Varchar `json:"thumb_path"`
+	ThumbExtension pgtype.Varchar `json:"thumb_extension"`
+	ThumbMimetype  pgtype.Varchar `json:"thumb_mimetype"`
+	ThumbBytes     *int32         `json:"thumb_bytes"`
 }
 
 // ListPostFiles implements Querier.ListPostFiles.
@@ -807,7 +836,7 @@ func (q *DBQuerier) ListPostFiles(ctx context.Context, boardID int32, postIds []
 	items := []ListPostFilesRow{}
 	for rows.Next() {
 		var item ListPostFilesRow
-		if err := rows.Scan(&item.PostID, &item.Idx, &item.Path, &item.Extension, &item.Mimetype, &item.Bytes, &item.OriginalName); err != nil {
+		if err := rows.Scan(&item.PostID, &item.Idx, &item.Path, &item.Extension, &item.Mimetype, &item.Bytes, &item.OriginalName, &item.ThumbPath, &item.ThumbExtension, &item.ThumbMimetype, &item.ThumbBytes); err != nil {
 			return nil, fmt.Errorf("scan ListPostFiles row: %w", err)
 		}
 		items = append(items, item)
@@ -833,7 +862,7 @@ func (q *DBQuerier) ListPostFilesScan(results pgx.BatchResults) ([]ListPostFiles
 	items := []ListPostFilesRow{}
 	for rows.Next() {
 		var item ListPostFilesRow
-		if err := rows.Scan(&item.PostID, &item.Idx, &item.Path, &item.Extension, &item.Mimetype, &item.Bytes, &item.OriginalName); err != nil {
+		if err := rows.Scan(&item.PostID, &item.Idx, &item.Path, &item.Extension, &item.Mimetype, &item.Bytes, &item.OriginalName, &item.ThumbPath, &item.ThumbExtension, &item.ThumbMimetype, &item.ThumbBytes); err != nil {
 			return nil, fmt.Errorf("scan ListPostFilesBatch row: %w", err)
 		}
 		items = append(items, item)
@@ -844,7 +873,10 @@ func (q *DBQuerier) ListPostFilesScan(results pgx.BatchResults) ([]ListPostFiles
 	return items, err
 }
 
-const listThreadFilesSQL = `SELECT post_id, idx, path, extension, mimetype, bytes, original_name
+const listThreadFilesSQL = `SELECT
+post_id, idx
+, path, extension, mimetype, bytes, original_name
+, thumb_path, thumb_extension, thumb_mimetype, thumb_bytes
 FROM files
 WHERE board_id = $1
 AND thread_id = $2
@@ -852,13 +884,17 @@ ORDER BY post_id, idx
 ;`
 
 type ListThreadFilesRow struct {
-	PostID       *int           `json:"post_id"`
-	Idx          *int16         `json:"idx"`
-	Path         pgtype.Varchar `json:"path"`
-	Extension    pgtype.Varchar `json:"extension"`
-	Mimetype     pgtype.Varchar `json:"mimetype"`
-	Bytes        *int32         `json:"bytes"`
-	OriginalName pgtype.Varchar `json:"original_name"`
+	PostID         *int           `json:"post_id"`
+	Idx            *int16         `json:"idx"`
+	Path           pgtype.Varchar `json:"path"`
+	Extension      pgtype.Varchar `json:"extension"`
+	Mimetype       pgtype.Varchar `json:"mimetype"`
+	Bytes          *int32         `json:"bytes"`
+	OriginalName   pgtype.Varchar `json:"original_name"`
+	ThumbPath      pgtype.Varchar `json:"thumb_path"`
+	ThumbExtension pgtype.Varchar `json:"thumb_extension"`
+	ThumbMimetype  pgtype.Varchar `json:"thumb_mimetype"`
+	ThumbBytes     *int32         `json:"thumb_bytes"`
 }
 
 // ListThreadFiles implements Querier.ListThreadFiles.
@@ -872,7 +908,7 @@ func (q *DBQuerier) ListThreadFiles(ctx context.Context, boardID int32, threadID
 	items := []ListThreadFilesRow{}
 	for rows.Next() {
 		var item ListThreadFilesRow
-		if err := rows.Scan(&item.PostID, &item.Idx, &item.Path, &item.Extension, &item.Mimetype, &item.Bytes, &item.OriginalName); err != nil {
+		if err := rows.Scan(&item.PostID, &item.Idx, &item.Path, &item.Extension, &item.Mimetype, &item.Bytes, &item.OriginalName, &item.ThumbPath, &item.ThumbExtension, &item.ThumbMimetype, &item.ThumbBytes); err != nil {
 			return nil, fmt.Errorf("scan ListThreadFiles row: %w", err)
 		}
 		items = append(items, item)
@@ -898,7 +934,7 @@ func (q *DBQuerier) ListThreadFilesScan(results pgx.BatchResults) ([]ListThreadF
 	items := []ListThreadFilesRow{}
 	for rows.Next() {
 		var item ListThreadFilesRow
-		if err := rows.Scan(&item.PostID, &item.Idx, &item.Path, &item.Extension, &item.Mimetype, &item.Bytes, &item.OriginalName); err != nil {
+		if err := rows.Scan(&item.PostID, &item.Idx, &item.Path, &item.Extension, &item.Mimetype, &item.Bytes, &item.OriginalName, &item.ThumbPath, &item.ThumbExtension, &item.ThumbMimetype, &item.ThumbBytes); err != nil {
 			return nil, fmt.Errorf("scan ListThreadFilesBatch row: %w", err)
 		}
 		items = append(items, item)
@@ -957,6 +993,55 @@ func (q *DBQuerier) ShowFileScan(results pgx.BatchResults) (ShowFileRow, error) 
 	return item, nil
 }
 
+const showFileThumbSQL = `SELECT thumb_extension, thumb_path, thumb_mimetype, thumb_bytes
+FROM files
+WHERE board_id = $1
+AND thread_id = $2
+AND post_id = $3
+AND idx = $4
+AND thumb_path IS NOT NULL
+;`
+
+type ShowFileThumbParams struct {
+	BoardID  int32
+	ThreadID int
+	PostID   int
+	Idx      int16
+}
+
+type ShowFileThumbRow struct {
+	ThumbExtension pgtype.Varchar `json:"thumb_extension"`
+	ThumbPath      pgtype.Varchar `json:"thumb_path"`
+	ThumbMimetype  pgtype.Varchar `json:"thumb_mimetype"`
+	ThumbBytes     *int32         `json:"thumb_bytes"`
+}
+
+// ShowFileThumb implements Querier.ShowFileThumb.
+func (q *DBQuerier) ShowFileThumb(ctx context.Context, params ShowFileThumbParams) (ShowFileThumbRow, error) {
+	ctx = context.WithValue(ctx, "pggen_query_name", "ShowFileThumb")
+	row := q.conn.QueryRow(ctx, showFileThumbSQL, params.BoardID, params.ThreadID, params.PostID, params.Idx)
+	var item ShowFileThumbRow
+	if err := row.Scan(&item.ThumbExtension, &item.ThumbPath, &item.ThumbMimetype, &item.ThumbBytes); err != nil {
+		return item, fmt.Errorf("query ShowFileThumb: %w", err)
+	}
+	return item, nil
+}
+
+// ShowFileThumbBatch implements Querier.ShowFileThumbBatch.
+func (q *DBQuerier) ShowFileThumbBatch(batch genericBatch, params ShowFileThumbParams) {
+	batch.Queue(showFileThumbSQL, params.BoardID, params.ThreadID, params.PostID, params.Idx)
+}
+
+// ShowFileThumbScan implements Querier.ShowFileThumbScan.
+func (q *DBQuerier) ShowFileThumbScan(results pgx.BatchResults) (ShowFileThumbRow, error) {
+	row := results.QueryRow()
+	var item ShowFileThumbRow
+	if err := row.Scan(&item.ThumbExtension, &item.ThumbPath, &item.ThumbMimetype, &item.ThumbBytes); err != nil {
+		return item, fmt.Errorf("scan ShowFileThumbBatch row: %w", err)
+	}
+	return item, nil
+}
+
 const submitThreadSQL = `WITH
 thread AS (
   INSERT INTO threads (board_id, thread_id) VALUES
@@ -969,11 +1054,11 @@ post AS (
   RETURNING post_id
 ),
 files_input AS (
-  SELECT $1 AS board_id, (SELECT thread_id FROM thread) AS thread_id, (SELECT thread_id FROM thread) AS post_id, idx, path, extension, mimetype, bytes, original_name
+  SELECT $1 AS board_id, (SELECT thread_id FROM thread) AS thread_id, (SELECT thread_id FROM thread) AS post_id, idx, path, extension, mimetype, bytes, original_name, thumb_path, thumb_extension, thumb_mimetype, thumb_bytes
   FROM unnest($5::partial_file[])
 ),
 files AS (
-  INSERT INTO files (board_id, thread_id, post_id, idx, path, extension, mimetype, bytes, original_name)
+  INSERT INTO files (board_id, thread_id, post_id, idx, path, extension, mimetype, bytes, original_name, thumb_path, thumb_extension, thumb_mimetype, thumb_bytes)
   SELECT *
   FROM files_input
 )
@@ -1021,11 +1106,11 @@ post AS (
   RETURNING post_id
 ),
 files_input AS (
-  SELECT $1 AS board_id, $2, (SELECT post_id FROM post) AS post_id, idx, path, extension, mimetype, bytes, original_name
+  SELECT $1 AS board_id, $2, (SELECT post_id FROM post) AS post_id, idx, path, extension, mimetype, bytes, original_name, thumb_path, thumb_extension, thumb_mimetype, thumb_bytes
   FROM unnest($6::partial_file[])
 ),
 files AS (
-  INSERT INTO files (board_id, thread_id, post_id, idx, path, extension, mimetype, bytes, original_name)
+  INSERT INTO files (board_id, thread_id, post_id, idx, path, extension, mimetype, bytes, original_name, thumb_path, thumb_extension, thumb_mimetype, thumb_bytes)
   SELECT *
   FROM files_input
 )

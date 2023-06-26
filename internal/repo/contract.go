@@ -23,7 +23,12 @@ type File struct {
 	Bytes        int    `json:"bytes"`
 	OriginalName string `json:"original_name"`
 
-	InternalPath string `json:"-"`
+	ThumbExtension string `json:"thumb_extension"`
+	ThumbMimeType  string `json:"thumb_mime_type"`
+	ThumbBytes     int    `json:"thumb_bytes"`
+
+	InternalPath      string `json:"-"`
+	ThumbInternalPath string `json:"-"`
 }
 
 type Post struct {
@@ -63,6 +68,11 @@ type SubmitPostFile struct {
 	Bytes        int
 	OriginalName string
 	InternalPath string
+
+	ThumbExtension    string
+	ThumbMimeType     string
+	ThumbBytes        int
+	ThumbInternalPath string
 }
 
 type SubmitPost struct {

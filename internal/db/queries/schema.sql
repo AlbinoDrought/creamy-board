@@ -68,7 +68,10 @@ ORDER BY posts.post_id
 ;
 
 -- name: ListPostFiles :many
-SELECT post_id, idx, path, extension, mimetype, bytes, original_name
+SELECT 
+post_id, idx
+, path, extension, mimetype, bytes, original_name
+, thumb_path, thumb_extension, thumb_mimetype, thumb_bytes
 FROM files
 WHERE board_id = pggen.arg('board_id')
 AND post_id = ANY (pggen.arg('post_ids')::BIGINT[])
@@ -76,7 +79,10 @@ ORDER BY post_id, idx
 ;
 
 -- name: ListThreadFiles :many
-SELECT post_id, idx, path, extension, mimetype, bytes, original_name
+SELECT
+post_id, idx
+, path, extension, mimetype, bytes, original_name
+, thumb_path, thumb_extension, thumb_mimetype, thumb_bytes
 FROM files
 WHERE board_id = pggen.arg('board_id')
 AND thread_id = pggen.arg('thread_id')
@@ -92,6 +98,16 @@ AND post_id = pggen.arg('post_id')
 AND idx = pggen.arg('idx')
 ;
 
+-- name: ShowFileThumb :one
+SELECT thumb_extension, thumb_path, thumb_mimetype, thumb_bytes
+FROM files
+WHERE board_id = pggen.arg('board_id')
+AND thread_id = pggen.arg('thread_id')
+AND post_id = pggen.arg('post_id')
+AND idx = pggen.arg('idx')
+AND thumb_path IS NOT NULL
+;
+
 -- name: SubmitThread :one
 WITH
 thread AS (
@@ -105,11 +121,11 @@ post AS (
   RETURNING post_id
 ),
 files_input AS (
-  SELECT pggen.arg('board_id') AS board_id, (SELECT thread_id FROM thread) AS thread_id, (SELECT thread_id FROM thread) AS post_id, idx, path, extension, mimetype, bytes, original_name
+  SELECT pggen.arg('board_id') AS board_id, (SELECT thread_id FROM thread) AS thread_id, (SELECT thread_id FROM thread) AS post_id, idx, path, extension, mimetype, bytes, original_name, thumb_path, thumb_extension, thumb_mimetype, thumb_bytes
   FROM unnest(pggen.arg('partial_files')::partial_file[])
 ),
 files AS (
-  INSERT INTO files (board_id, thread_id, post_id, idx, path, extension, mimetype, bytes, original_name)
+  INSERT INTO files (board_id, thread_id, post_id, idx, path, extension, mimetype, bytes, original_name, thumb_path, thumb_extension, thumb_mimetype, thumb_bytes)
   SELECT *
   FROM files_input
 )
@@ -124,11 +140,11 @@ post AS (
   RETURNING post_id
 ),
 files_input AS (
-  SELECT pggen.arg('board_id') AS board_id, pggen.arg('thread_id'), (SELECT post_id FROM post) AS post_id, idx, path, extension, mimetype, bytes, original_name
+  SELECT pggen.arg('board_id') AS board_id, pggen.arg('thread_id'), (SELECT post_id FROM post) AS post_id, idx, path, extension, mimetype, bytes, original_name, thumb_path, thumb_extension, thumb_mimetype, thumb_bytes
   FROM unnest(pggen.arg('partial_files')::partial_file[])
 ),
 files AS (
-  INSERT INTO files (board_id, thread_id, post_id, idx, path, extension, mimetype, bytes, original_name)
+  INSERT INTO files (board_id, thread_id, post_id, idx, path, extension, mimetype, bytes, original_name, thumb_path, thumb_extension, thumb_mimetype, thumb_bytes)
   SELECT *
   FROM files_input
 )

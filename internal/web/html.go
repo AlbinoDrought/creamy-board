@@ -2,6 +2,7 @@ package web
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 	"go.albinodrought.com/creamy-board/internal/cfg"
 	"go.albinodrought.com/creamy-board/internal/log"
 	"go.albinodrought.com/creamy-board/internal/repo"
+	"go.albinodrought.com/creamy-board/internal/thumbnailer"
 	"go.albinodrought.com/creamy-board/internal/web/tmpl"
 )
 
@@ -108,6 +110,87 @@ func htmlMimeTypeAllowed(mime *mimetype.MIME) bool {
 	return false
 }
 
+var ErrMimeTypeNotAllowed = errors.New("mimetype not allowed")
+
+func (wp *HTMLWebPortal) saveFormFile(r *http.Request, boardSlug string, key string) (*repo.SubmitPostFile, error) {
+	formFile, formFileHeader, err := r.FormFile(key)
+	if err != nil {
+		if err == http.ErrMissingFile {
+			// not submitted, normal
+			return nil, nil
+		}
+		return nil, err
+	}
+	defer formFile.Close()
+
+	mime, _ := mimetype.DetectReader(formFile)
+	if mime == nil || !htmlMimeTypeAllowed(mime) {
+		return nil, ErrMimeTypeNotAllowed
+	}
+	extension := strings.TrimPrefix(mime.Extension(), ".")
+	if extension == "" {
+		extension = "unknown"
+	}
+
+	filePath := path.Join("uf", path.Clean(boardSlug), xid.New().String())
+
+	_, err = formFile.Seek(0, io.SeekStart)
+	if err != nil {
+		return nil, err
+	}
+	err = cfg.Storage.Write(r.Context(), filePath, formFile)
+	if err != nil {
+		return nil, err
+	}
+
+	postFile := repo.SubmitPostFile{
+		Extension:    extension,
+		MimeType:     mime.String(),
+		Bytes:        int(formFileHeader.Size),
+		OriginalName: formFileHeader.Filename,
+		InternalPath: filePath,
+	}
+
+	_, err = formFile.Seek(0, io.SeekStart)
+	if err != nil {
+		log.Warnf("error while seeking before thumbnail gen, skipping thumbnail: %v", err)
+	} else {
+		thumb, err := thumbnailer.Generate(formFile, mime)
+		if err != nil {
+			log.Warnf("error during thumbnail gen for %v, skipping: %v", mime.String(), err)
+		} else {
+			defer thumb.Close()
+			thumbFilePath := filePath + ".thumb"
+			err = cfg.Storage.Write(r.Context(), thumbFilePath, thumb)
+			if err != nil {
+				cfg.Storage.Delete(r.Context(), postFile.InternalPath)
+				return nil, err
+			}
+
+			thumbExtension := strings.TrimPrefix(thumb.MIME.Extension(), ".")
+			if thumbExtension == "" {
+				thumbExtension = "unknown"
+			}
+
+			postFile.ThumbExtension = thumbExtension
+			postFile.ThumbMimeType = thumb.MIME.String()
+			postFile.ThumbBytes = thumb.Bytes
+			postFile.ThumbInternalPath = thumbFilePath
+		}
+	}
+
+	return &postFile, nil
+}
+
+func (wp *HTMLWebPortal) cleanupSubmit(req repo.SubmitPost) {
+	for _, file := range req.Files {
+		cfg.Storage.Delete(context.TODO(), file.InternalPath)
+		if file.ThumbInternalPath != "" {
+			cfg.Storage.Delete(context.TODO(), file.ThumbInternalPath)
+		}
+	}
+}
+
 func (wp *HTMLWebPortal) SubmitThread(w http.ResponseWriter, r *http.Request, boardSlug string) {
 	req := repo.SubmitPost{
 		Subject: r.FormValue("subject"),
@@ -128,53 +211,25 @@ func (wp *HTMLWebPortal) SubmitThread(w http.ResponseWriter, r *http.Request, bo
 	created := false
 	// clean up temp files if req fails
 	defer func() {
-		if created {
-			return
-		}
-		for _, file := range req.Files {
-			cfg.Storage.Delete(context.TODO(), file.InternalPath)
+		if !created {
+			wp.cleanupSubmit(req)
 		}
 	}()
 
 	for _, fileKey := range []string{"file1", "file2", "file3"} {
-		formFile, formFileHeader, err := r.FormFile(fileKey)
+		postFile, err := wp.saveFormFile(r, boardSlug, fileKey)
 		if err != nil {
-			if err == http.ErrMissingFile {
-				// not submitted, normal
-				continue
+			if err == ErrMimeTypeNotAllowed {
+				http.Redirect(w, r, fmt.Sprintf("/%v/index.html?error=%v", boardSlug, UIErrorUnsupportedMimetype), http.StatusFound)
+				return
 			}
-			log.Warnf("failed to retrieve form file %v: %v", fileKey, err)
-			htmlUnhandled(w)
-			return
-		}
-
-		mime, _ := mimetype.DetectReader(formFile)
-		if mime == nil || !htmlMimeTypeAllowed(mime) {
-			http.Redirect(w, r, fmt.Sprintf("/%v/index.html?error=%v", boardSlug, UIErrorUnsupportedMimetype), http.StatusFound)
-			return
-		}
-		extension := strings.TrimPrefix(mime.Extension(), ".")
-		if extension == "" {
-			extension = "unknown"
-		}
-
-		filePath := path.Join("uf", path.Clean(boardSlug), xid.New().String())
-
-		formFile.Seek(0, io.SeekStart)
-		err = cfg.Storage.Write(r.Context(), filePath, formFile)
-		if err != nil {
 			log.Warnf("failed to save form file %v: %v", fileKey, err)
 			htmlUnhandled(w)
 			return
 		}
-
-		req.Files = append(req.Files, repo.SubmitPostFile{
-			Extension:    extension,
-			MimeType:     mime.String(),
-			Bytes:        int(formFileHeader.Size),
-			OriginalName: formFileHeader.Filename,
-			InternalPath: filePath,
-		})
+		if postFile != nil {
+			req.Files = append(req.Files, *postFile)
+		}
 	}
 
 	if len(req.Files) < 1 {
@@ -208,53 +263,25 @@ func (wp *HTMLWebPortal) SubmitThreadPost(w http.ResponseWriter, r *http.Request
 	created := false
 	// clean up temp files if req fails
 	defer func() {
-		if created {
-			return
-		}
-		for _, file := range req.Files {
-			cfg.Storage.Delete(context.TODO(), file.InternalPath)
+		if !created {
+			wp.cleanupSubmit(req)
 		}
 	}()
 
 	for _, fileKey := range []string{"file1", "file2", "file3"} {
-		formFile, formFileHeader, err := r.FormFile(fileKey)
+		postFile, err := wp.saveFormFile(r, boardSlug, fileKey)
 		if err != nil {
-			if err == http.ErrMissingFile {
-				// not submitted, normal
-				continue
+			if err == ErrMimeTypeNotAllowed {
+				http.Redirect(w, r, fmt.Sprintf("/%v/res/%v.html?error=%v", boardSlug, threadID, UIErrorUnsupportedMimetype), http.StatusFound)
+				return
 			}
-			log.Warnf("failed to retrieve form file %v: %v", fileKey, err)
-			htmlUnhandled(w)
-			return
-		}
-
-		mime, _ := mimetype.DetectReader(formFile)
-		if mime == nil || !htmlMimeTypeAllowed(mime) {
-			http.Redirect(w, r, fmt.Sprintf("/%v/res/%v.html?error=%v", boardSlug, threadID, UIErrorUnsupportedMimetype), http.StatusFound)
-			return
-		}
-		extension := strings.TrimPrefix(mime.Extension(), ".")
-		if extension == "" {
-			extension = "unknown"
-		}
-
-		filePath := path.Join("uf", path.Clean(boardSlug), xid.New().String())
-
-		formFile.Seek(0, io.SeekStart)
-		err = cfg.Storage.Write(r.Context(), filePath, formFile)
-		if err != nil {
 			log.Warnf("failed to save form file %v: %v", fileKey, err)
 			htmlUnhandled(w)
 			return
 		}
-
-		req.Files = append(req.Files, repo.SubmitPostFile{
-			Extension:    extension,
-			MimeType:     mime.String(),
-			Bytes:        int(formFileHeader.Size),
-			OriginalName: formFileHeader.Filename,
-			InternalPath: filePath,
-		})
+		if postFile != nil {
+			req.Files = append(req.Files, *postFile)
+		}
 	}
 
 	if req.Body == "" && len(req.Files) < 1 {

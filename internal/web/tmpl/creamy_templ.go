@@ -40,6 +40,15 @@ func nameFile(thread *repo.Thread, post *repo.Post, file *repo.File) string {
 		file.Extension,
 	)
 }
+func nameFileThumb(thread *repo.Thread, post *repo.Post, file *repo.File) string {
+	return fmt.Sprintf(
+		"%v-%v-%v.%v",
+		thread.ID,
+		post.ID,
+		file.Index,
+		file.ThumbExtension,
+	)
+}
 
 func linkBoard(board *repo.Board) templ.SafeURL {
 	return templ.SafeURL(fmt.Sprintf("/%v/", board.Slug))
@@ -50,6 +59,17 @@ func linkFile(board *repo.Board, thread *repo.Thread, post *repo.Post, file *rep
 		board.Slug,
 		nameFile(thread, post, file),
 	))
+}
+func linkFileThumb(board *repo.Board, thread *repo.Thread, post *repo.Post, file *repo.File) templ.SafeURL {
+	if file.ThumbInternalPath != "" {
+		return templ.SafeURL(fmt.Sprintf(
+			"/%v/thumb/%v",
+			board.Slug,
+			nameFileThumb(thread, post, file),
+		))
+	}
+
+	return templ.SafeURL("/img/default-thumb.png")
 }
 func linkThreadShow(board *repo.Board, thread *repo.Thread) templ.SafeURL {
 	return templ.SafeURL(fmt.Sprintf("/%v/res/%v.html", board.Slug, thread.ID))
@@ -697,7 +717,7 @@ func fileFull(board *repo.Board, thread *repo.Thread, post *repo.Post, file *rep
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString(templ.EscapeString(string(linkFile(board, thread, post, file))))
+		_, err = templBuffer.WriteString(templ.EscapeString(string(linkFileThumb(board, thread, post, file))))
 		if err != nil {
 			return err
 		}

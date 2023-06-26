@@ -28,6 +28,13 @@ func fileFromListPost(f *File, row queries.ListPostFilesRow) {
 	f.MimeType = row.Mimetype.String
 	f.Bytes = int(*row.Bytes)
 	f.OriginalName = row.OriginalName.String
+
+	if row.ThumbPath.Status == pgtype.Present {
+		f.ThumbInternalPath = row.ThumbPath.String
+		f.ThumbExtension = row.ThumbExtension.String
+		f.ThumbMimeType = row.ThumbMimetype.String
+		f.ThumbBytes = int(*row.ThumbBytes)
+	}
 }
 
 func fileFromListThread(f *File, row queries.ListThreadFilesRow) {
@@ -37,6 +44,13 @@ func fileFromListThread(f *File, row queries.ListThreadFilesRow) {
 	f.MimeType = row.Mimetype.String
 	f.Bytes = int(*row.Bytes)
 	f.OriginalName = row.OriginalName.String
+
+	if row.ThumbPath.Status == pgtype.Present {
+		f.ThumbInternalPath = row.ThumbPath.String
+		f.ThumbExtension = row.ThumbExtension.String
+		f.ThumbMimeType = row.ThumbMimetype.String
+		f.ThumbBytes = int(*row.ThumbBytes)
+	}
 }
 
 func postFromRecentPost(p *Post, row queries.ListThreadRecentPostsRow) {
@@ -278,6 +292,10 @@ func varchar(value string) pgtype.Varchar {
 	return pgtype.Varchar{String: value, Status: pgtype.Present}
 }
 
+func nullvarchar() pgtype.Varchar {
+	return pgtype.Varchar{Status: pgtype.Null}
+}
+
 func partialFiles(files []SubmitPostFile) []queries.PartialFile {
 	partialFiles := make([]queries.PartialFile, len(files))
 	for i, file := range files {
@@ -289,6 +307,19 @@ func partialFiles(files []SubmitPostFile) []queries.PartialFile {
 		partialFiles[i].Mimetype = varchar(file.MimeType)
 		partialFiles[i].Bytes = &bytes32
 		partialFiles[i].OriginalName = varchar(file.OriginalName)
+
+		if file.ThumbInternalPath != "" {
+			thumbBytes32 := int32(file.ThumbBytes)
+			partialFiles[i].ThumbPath = varchar(file.ThumbInternalPath)
+			partialFiles[i].ThumbExtension = varchar(file.ThumbExtension)
+			partialFiles[i].ThumbMimetype = varchar(file.ThumbMimeType)
+			partialFiles[i].ThumbBytes = &thumbBytes32
+		} else {
+			partialFiles[i].ThumbPath = nullvarchar()
+			partialFiles[i].ThumbExtension = nullvarchar()
+			partialFiles[i].ThumbMimetype = nullvarchar()
+			partialFiles[i].ThumbBytes = nil
+		}
 	}
 	return partialFiles
 }
