@@ -141,3 +141,10 @@ INSERT INTO posts (board_id, thread_id, post_id, subject, author, body) VALUES
     (pggen.arg('board_id'), pggen.arg('thread_id'), board_post_seq_nextval(pggen.arg('board_id')), pggen.arg('subject'), pggen.arg('author'), pggen.arg('body'))
   RETURNING post_id
 ;
+
+-- name: BumpThread :exec
+UPDATE threads
+SET bumped_at = NOW()
+WHERE board_id = pggen.arg('board_id')
+AND thread_id = pggen.arg('thread_id')
+;

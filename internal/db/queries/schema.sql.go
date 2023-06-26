@@ -107,6 +107,13 @@ type Querier interface {
 	SubmitPostNoFilesBatch(batch genericBatch, params SubmitPostNoFilesParams)
 	// SubmitPostNoFilesScan scans the result of an executed SubmitPostNoFilesBatch query.
 	SubmitPostNoFilesScan(results pgx.BatchResults) (int, error)
+
+	BumpThread(ctx context.Context, boardID int32, threadID int) (pgconn.CommandTag, error)
+	// BumpThreadBatch enqueues a BumpThread query into batch to be executed
+	// later by the batch.
+	BumpThreadBatch(batch genericBatch, boardID int32, threadID int)
+	// BumpThreadScan scans the result of an executed BumpThreadBatch query.
+	BumpThreadScan(results pgx.BatchResults) (pgconn.CommandTag, error)
 }
 
 type DBQuerier struct {
@@ -222,6 +229,9 @@ func PrepareAllQueries(ctx context.Context, p preparer) error {
 	}
 	if _, err := p.Prepare(ctx, submitPostNoFilesSQL, submitPostNoFilesSQL); err != nil {
 		return fmt.Errorf("prepare query 'SubmitPostNoFiles': %w", err)
+	}
+	if _, err := p.Prepare(ctx, bumpThreadSQL, bumpThreadSQL); err != nil {
+		return fmt.Errorf("prepare query 'BumpThread': %w", err)
 	}
 	return nil
 }
@@ -1094,6 +1104,36 @@ func (q *DBQuerier) SubmitPostNoFilesScan(results pgx.BatchResults) (int, error)
 		return item, fmt.Errorf("scan SubmitPostNoFilesBatch row: %w", err)
 	}
 	return item, nil
+}
+
+const bumpThreadSQL = `UPDATE threads
+SET bumped_at = NOW()
+WHERE board_id = $1
+AND thread_id = $2
+;`
+
+// BumpThread implements Querier.BumpThread.
+func (q *DBQuerier) BumpThread(ctx context.Context, boardID int32, threadID int) (pgconn.CommandTag, error) {
+	ctx = context.WithValue(ctx, "pggen_query_name", "BumpThread")
+	cmdTag, err := q.conn.Exec(ctx, bumpThreadSQL, boardID, threadID)
+	if err != nil {
+		return cmdTag, fmt.Errorf("exec query BumpThread: %w", err)
+	}
+	return cmdTag, err
+}
+
+// BumpThreadBatch implements Querier.BumpThreadBatch.
+func (q *DBQuerier) BumpThreadBatch(batch genericBatch, boardID int32, threadID int) {
+	batch.Queue(bumpThreadSQL, boardID, threadID)
+}
+
+// BumpThreadScan implements Querier.BumpThreadScan.
+func (q *DBQuerier) BumpThreadScan(results pgx.BatchResults) (pgconn.CommandTag, error) {
+	cmdTag, err := results.Exec()
+	if err != nil {
+		return cmdTag, fmt.Errorf("exec BumpThreadBatch: %w", err)
+	}
+	return cmdTag, err
 }
 
 // textPreferrer wraps a pgtype.ValueTranscoder and sets the preferred encoding

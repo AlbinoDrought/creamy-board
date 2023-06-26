@@ -319,8 +319,10 @@ func (r *DBRepo) SubmitThreadPost(ctx context.Context, boardSlug string, threadI
 		return 0, err
 	}
 
+	var postID int
+
 	if len(req.Files) == 0 {
-		postID, err := r.Querier.SubmitPostNoFiles(ctx, queries.SubmitPostNoFilesParams{
+		postID, err = r.Querier.SubmitPostNoFiles(ctx, queries.SubmitPostNoFilesParams{
 			BoardID:  dbBoard.BoardID,
 			ThreadID: threadID,
 			Subject:  varchar(req.Subject),
@@ -330,10 +332,9 @@ func (r *DBRepo) SubmitThreadPost(ctx context.Context, boardSlug string, threadI
 		if err != nil {
 			return 0, err
 		}
-		return postID, nil
 	} else {
 		// this query fails when PartialFiles are empty, so I use the above separate query
-		postID, err := r.Querier.SubmitPost(ctx, queries.SubmitPostParams{
+		postIDPtr, err := r.Querier.SubmitPost(ctx, queries.SubmitPostParams{
 			BoardID:      dbBoard.BoardID,
 			ThreadID:     threadID,
 			Subject:      varchar(req.Subject),
@@ -345,8 +346,12 @@ func (r *DBRepo) SubmitThreadPost(ctx context.Context, boardSlug string, threadI
 		if err != nil {
 			return 0, err
 		}
-		return *postID, nil
+		postID = *postIDPtr
 	}
+
+	r.Querier.BumpThread(ctx, dbBoard.BoardID, threadID) // get error / don't care
+
+	return postID, nil
 }
 
-// var _ CreamyBoard = &DBRepo{}
+var _ CreamyBoard = &DBRepo{}
