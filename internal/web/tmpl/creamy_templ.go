@@ -753,6 +753,22 @@ func postFull(board *repo.Board, thread *repo.Thread, post *repo.Post) templ.Com
 			return err
 		}
 		// Element Attributes
+		_, err = templBuffer.WriteString(" id=")
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("\"")
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString(templ.EscapeString(fmt.Sprintf("%v", post.ID)))
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("\"")
+		if err != nil {
+			return err
+		}
 		_, err = templBuffer.WriteString(" class=\"post\"")
 		if err != nil {
 			return err
@@ -875,6 +891,22 @@ func threadFull(board *repo.Board, thread *repo.Thread, main *repo.Post, other [
 			return err
 		}
 		// Element Attributes
+		_, err = templBuffer.WriteString(" id=")
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("\"")
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString(templ.EscapeString(fmt.Sprintf("%v", main.ID)))
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("\"")
+		if err != nil {
+			return err
+		}
 		_, err = templBuffer.WriteString(" class=\"post post--op\"")
 		if err != nil {
 			return err
@@ -994,7 +1026,7 @@ func threadFull(board *repo.Board, thread *repo.Thread, main *repo.Post, other [
 	})
 }
 
-func postForm(errorText string) templ.Component {
+func postForm(errorText string, requireFields bool) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) (err error) {
 		templBuffer, templIsBuffer := w.(*bytes.Buffer)
 		if !templIsBuffer {
@@ -1290,31 +1322,65 @@ func postForm(errorText string) templ.Component {
 		if err != nil {
 			return err
 		}
-		// Element (standard)
-		_, err = templBuffer.WriteString("<textarea")
-		if err != nil {
-			return err
-		}
-		// Element Attributes
-		_, err = templBuffer.WriteString(" name=\"body\"")
-		if err != nil {
-			return err
-		}
-		_, err = templBuffer.WriteString(" rows=\"5\"")
-		if err != nil {
-			return err
-		}
-		_, err = templBuffer.WriteString(" cols=\"27\"")
-		if err != nil {
-			return err
-		}
-		_, err = templBuffer.WriteString(">")
-		if err != nil {
-			return err
-		}
-		_, err = templBuffer.WriteString("</textarea>")
-		if err != nil {
-			return err
+		// If
+		if requireFields {
+			// Element (standard)
+			_, err = templBuffer.WriteString("<textarea")
+			if err != nil {
+				return err
+			}
+			// Element Attributes
+			_, err = templBuffer.WriteString(" required")
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString(" name=\"body\"")
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString(" rows=\"5\"")
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString(" cols=\"27\"")
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString(">")
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString("</textarea>")
+			if err != nil {
+				return err
+			}
+		} else {
+			// Element (standard)
+			_, err = templBuffer.WriteString("<textarea")
+			if err != nil {
+				return err
+			}
+			// Element Attributes
+			_, err = templBuffer.WriteString(" name=\"body\"")
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString(" rows=\"5\"")
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString(" cols=\"27\"")
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString(">")
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString("</textarea>")
+			if err != nil {
+				return err
+			}
 		}
 		_, err = templBuffer.WriteString("</td>")
 		if err != nil {
@@ -1367,27 +1433,57 @@ func postForm(errorText string) templ.Component {
 		if err != nil {
 			return err
 		}
-		// Element (void)
-		_, err = templBuffer.WriteString("<input")
-		if err != nil {
-			return err
-		}
-		// Element Attributes
-		_, err = templBuffer.WriteString(" type=\"file\"")
-		if err != nil {
-			return err
-		}
-		_, err = templBuffer.WriteString(" id=\"file1\"")
-		if err != nil {
-			return err
-		}
-		_, err = templBuffer.WriteString(" name=\"file1\"")
-		if err != nil {
-			return err
-		}
-		_, err = templBuffer.WriteString(">")
-		if err != nil {
-			return err
+		// If
+		if requireFields {
+			// Element (void)
+			_, err = templBuffer.WriteString("<input")
+			if err != nil {
+				return err
+			}
+			// Element Attributes
+			_, err = templBuffer.WriteString(" required")
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString(" type=\"file\"")
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString(" id=\"file1\"")
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString(" name=\"file1\"")
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString(">")
+			if err != nil {
+				return err
+			}
+		} else {
+			// Element (void)
+			_, err = templBuffer.WriteString("<input")
+			if err != nil {
+				return err
+			}
+			// Element Attributes
+			_, err = templBuffer.WriteString(" type=\"file\"")
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString(" id=\"file1\"")
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString(" name=\"file1\"")
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString(">")
+			if err != nil {
+				return err
+			}
 		}
 		// Element (void)
 		_, err = templBuffer.WriteString("<input")
@@ -1837,7 +1933,7 @@ func ShowBoardAndRecents(brt *repo.BoardRecentThreads, errorText string) templ.C
 					defer templ.ReleaseBuffer(templBuffer)
 				}
 				// TemplElement
-				err = postForm(errorText).Render(ctx, templBuffer)
+				err = postForm(errorText, true).Render(ctx, templBuffer)
 				if err != nil {
 					return err
 				}
@@ -2017,7 +2113,7 @@ func ShowFullThread(bft *repo.BoardFullThread, errorText string) templ.Component
 					return err
 				}
 				// TemplElement
-				err = postForm(errorText).Render(ctx, templBuffer)
+				err = postForm(errorText, false).Render(ctx, templBuffer)
 				if err != nil {
 					return err
 				}

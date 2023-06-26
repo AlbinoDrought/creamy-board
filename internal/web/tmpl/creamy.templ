@@ -119,7 +119,7 @@ templ postFilesFull(board *repo.Board, thread *repo.Thread, post *repo.Post, fil
 }
 
 templ postFull(board *repo.Board, thread *repo.Thread, post *repo.Post) {
-	<div class="post">
+	<div id={ fmt.Sprintf("%v", post.ID) } class="post">
 		<div class="post__content">
 			<div class="post__head">
 				@postHead(board, thread, post)
@@ -134,8 +134,8 @@ templ postFull(board *repo.Board, thread *repo.Thread, post *repo.Post) {
 
 templ threadFull(board *repo.Board, thread *repo.Thread, main *repo.Post, other []repo.Post, inThread bool) {
 	<div class="thread">
-		<div class="post post--op">
-		<div class="post__content">
+		<div id={ fmt.Sprintf("%v", main.ID) } class="post post--op">
+			<div class="post__content">
 				<div class="post__head">
 					@threadHead(board, thread, main, inThread)
 				</div>
@@ -153,7 +153,7 @@ templ threadFull(board *repo.Board, thread *repo.Thread, main *repo.Post, other 
 	</div>
 }
 
-templ postForm(errorText string) {
+templ postForm(errorText string, requireFields bool) {
 	<form method="POST" enctype="multipart/form-data">
 		<table class="form">
 			<tbody>
@@ -177,13 +177,21 @@ templ postForm(errorText string) {
 				<tr>
 					<th>Comment</th>
 					<td>
-						<textarea name="body" rows="5" cols="27" />
+						if (requireFields) {
+							<textarea required name="body" rows="5" cols="27" />
+						} else {
+							<textarea name="body" rows="5" cols="27" />
+						}
 					</td>
 				</tr>
 				<tr>
 					<th><label for="file1">File</label></th>
 					<td>
-						<input type="file" id="file1" name="file1" />
+						if (requireFields) {
+							<input required type="file" id="file1" name="file1" />
+						} else {
+							<input type="file" id="file1" name="file1" />
+						}
 						<input type="file" id="file2" name="file2" />
 						<input type="file" id="file3" name="file2" />
 					</td>
@@ -234,7 +242,7 @@ templ ListBoards(boards []repo.Board) {
 templ ShowBoardAndRecents(brt *repo.BoardRecentThreads, errorText string) {
 	@page(textBoard(&brt.Board), brt.Board.Tagline) {
 		@wrapperBoard(&brt.Board) {
-			@postForm(errorText)
+			@postForm(errorText, true)
 			<hr />
 			for _, thread := range brt.RecentThreads {
 				@threadFull(&brt.Board, &thread.Thread, &thread.MainPost, thread.RecentPosts, false)
@@ -253,7 +261,7 @@ templ ShowFullThread(bft *repo.BoardFullThread, errorText string) {
 					<a href={ linkBoard(&bft.Board) }>[Return]</a>
 				</div>
 			</div>
-			@postForm(errorText)
+			@postForm(errorText, false)
 			<hr />
 			@threadFull(&bft.Board, &bft.FullThread.Thread, &bft.FullThread.MainPost, bft.FullThread.AllPosts, true)
 		}

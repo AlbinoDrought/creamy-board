@@ -87,12 +87,17 @@ hr {
 
 .thread {
   padding: 0 .5em;
+  margin-bottom: 1em;
 }
 .post__content {
   color: var(--text2);
   padding: .75em 1em;
   display: inline-block;
   max-width: 100%;
+}
+.post:target .post__content {
+  border-color: var(--highlight1);
+  background-color: var(--background3);
 }
 .post__head {
   margin-bottom: .25em;
