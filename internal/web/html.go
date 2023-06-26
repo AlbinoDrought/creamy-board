@@ -39,6 +39,11 @@ func (wp *HTMLWebPortal) ListBoards(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if len(boards) == 1 {
+		http.Redirect(w, r, fmt.Sprintf("/%v/index.html", boards[0].Slug), http.StatusFound)
+		return
+	}
+
 	w.Header().Add("Content-Type", "text/html")
 	tmpl.ListBoards(boards).Render(r.Context(), w)
 }
