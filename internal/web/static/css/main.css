@@ -76,6 +76,10 @@ hr {
   border: 1px solid var(--background3);
   color: var(--text1);
 }
+.form button[type="submit"] {
+  min-width: 7ch;
+  margin-left: .75ch;
+}
 .form button[type="submit"]:hover {
   background: var(--background3);
   color: var(--highlight1);
