@@ -113,6 +113,8 @@ func (r *DBRepo) ListBoards(ctx context.Context) ([]Board, error) {
 
 var ErrPageInvalid = errors.New("page invalid, must be 1 or greater")
 
+const threadsPerPage = 15
+
 func (r *DBRepo) ShowBoardListRecentThreads(ctx context.Context, boardSlug string, page int) (*BoardRecentThreads, error) {
 	if page < 0 {
 		return nil, ErrPageInvalid
@@ -125,8 +127,8 @@ func (r *DBRepo) ShowBoardListRecentThreads(ctx context.Context, boardSlug strin
 
 	dbThreads, err := r.Querier.ListActiveBoardThreads(ctx, queries.ListActiveBoardThreadsParams{
 		BoardID: dbBoard.BoardID,
-		Limit:   15,
-		Offset:  (page - 1) * 15,
+		Limit:   threadsPerPage,
+		Offset:  (page - 1) * threadsPerPage,
 	})
 	if err != nil {
 		return nil, err
@@ -213,9 +215,15 @@ func (r *DBRepo) ShowBoardListRecentThreads(ctx context.Context, boardSlug strin
 		}
 	}
 
+	pages := dbBoard.Threads / threadsPerPage
+	if dbBoard.Threads%threadsPerPage > 0 {
+		pages++
+	}
+
 	return &BoardRecentThreads{
 		Board:         board,
 		RecentThreads: recentThreads,
+		Pages:         pages,
 	}, nil
 }
 

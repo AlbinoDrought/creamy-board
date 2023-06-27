@@ -49,6 +49,7 @@ type RecentThread struct {
 type BoardRecentThreads struct {
 	Board         Board          `json:"board"`
 	RecentThreads []RecentThread `json:"recent_threads"`
+	Pages         int
 }
 
 type FullThread struct {

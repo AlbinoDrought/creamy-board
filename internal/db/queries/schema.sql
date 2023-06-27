@@ -5,13 +5,13 @@ ORDER BY slug, board_id
 ;
 
 -- name: ShowBoardFromID :one
-SELECT board_id, slug, title, tagline
+SELECT board_id, slug, title, tagline, (SELECT COUNT(*) FROM threads WHERE threads.board_id = boards.board_id) AS threads
 FROM boards
 WHERE board_id = pggen.arg('id')
 ;
 
 -- name: ShowBoardFromSlug :one
-SELECT board_id, slug, title, tagline
+SELECT board_id, slug, title, tagline, (SELECT COUNT(*) FROM threads WHERE threads.board_id = boards.board_id) AS threads
 FROM boards
 WHERE slug = pggen.arg('slug')
 ;

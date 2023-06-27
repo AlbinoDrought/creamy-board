@@ -23,6 +23,16 @@ a, a:visited {
 hr {
   border-color: var(--background3);
 }
+button {
+  background: var(--background2);
+  border: 1px solid var(--background3);
+  color: var(--text1);
+}
+button:hover {
+  background: var(--background3);
+  color: var(--highlight1);
+  border: 1px solid var(--highlight1);
+}
 
 .board__title {
   text-align: center;
@@ -79,11 +89,6 @@ hr {
 .form button[type="submit"] {
   min-width: 7ch;
   margin-left: .75ch;
-}
-.form button[type="submit"]:hover {
-  background: var(--background3);
-  color: var(--highlight1);
-  border: 1px solid var(--highlight1);
 }
 .form input[type="file"] {
   display: block;
@@ -167,4 +172,21 @@ hr {
   border: 1px solid var(--background3);
   background-color: var(--background2);
   margin-top: .75em;
+}
+
+.paging {
+  color: var(--text3);
+  padding: .5em 1em;
+  background: var(--background2);
+  display: inline-block;
+  margin: .5em;
+}
+.paging form {
+  display: inline-block;
+  margin: 0 .5em;
+}
+.paging button {
+  background: var(--background2);
+  border: 1px solid var(--background3);
+  color: var(--text1);
 }

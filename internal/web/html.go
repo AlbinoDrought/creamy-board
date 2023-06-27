@@ -70,7 +70,7 @@ func (wp *HTMLWebPortal) ListBoardThreads(w http.ResponseWriter, r *http.Request
 	}
 
 	w.Header().Add("Content-Type", "text/html")
-	tmpl.ShowBoardAndRecents(boardRecentThreads, errorText).Render(r.Context(), w)
+	tmpl.ShowBoardAndRecents(boardRecentThreads, page, errorText).Render(r.Context(), w)
 }
 
 func (wp *HTMLWebPortal) ShowThread(w http.ResponseWriter, r *http.Request, boardSlug string, threadID int) {

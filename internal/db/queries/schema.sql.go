@@ -467,7 +467,7 @@ func (q *DBQuerier) ListBoardsScan(results pgx.BatchResults) ([]ListBoardsRow, e
 	return items, err
 }
 
-const showBoardFromIDSQL = `SELECT board_id, slug, title, tagline
+const showBoardFromIDSQL = `SELECT board_id, slug, title, tagline, (SELECT COUNT(*) FROM threads WHERE threads.board_id = boards.board_id) AS threads
 FROM boards
 WHERE board_id = $1
 ;`
@@ -477,6 +477,7 @@ type ShowBoardFromIDRow struct {
 	Slug    pgtype.Varchar `json:"slug"`
 	Title   pgtype.Varchar `json:"title"`
 	Tagline pgtype.Varchar `json:"tagline"`
+	Threads int            `json:"threads"`
 }
 
 // ShowBoardFromID implements Querier.ShowBoardFromID.
@@ -484,7 +485,7 @@ func (q *DBQuerier) ShowBoardFromID(ctx context.Context, id int32) (ShowBoardFro
 	ctx = context.WithValue(ctx, "pggen_query_name", "ShowBoardFromID")
 	row := q.conn.QueryRow(ctx, showBoardFromIDSQL, id)
 	var item ShowBoardFromIDRow
-	if err := row.Scan(&item.BoardID, &item.Slug, &item.Title, &item.Tagline); err != nil {
+	if err := row.Scan(&item.BoardID, &item.Slug, &item.Title, &item.Tagline, &item.Threads); err != nil {
 		return item, fmt.Errorf("query ShowBoardFromID: %w", err)
 	}
 	return item, nil
@@ -499,13 +500,13 @@ func (q *DBQuerier) ShowBoardFromIDBatch(batch genericBatch, id int32) {
 func (q *DBQuerier) ShowBoardFromIDScan(results pgx.BatchResults) (ShowBoardFromIDRow, error) {
 	row := results.QueryRow()
 	var item ShowBoardFromIDRow
-	if err := row.Scan(&item.BoardID, &item.Slug, &item.Title, &item.Tagline); err != nil {
+	if err := row.Scan(&item.BoardID, &item.Slug, &item.Title, &item.Tagline, &item.Threads); err != nil {
 		return item, fmt.Errorf("scan ShowBoardFromIDBatch row: %w", err)
 	}
 	return item, nil
 }
 
-const showBoardFromSlugSQL = `SELECT board_id, slug, title, tagline
+const showBoardFromSlugSQL = `SELECT board_id, slug, title, tagline, (SELECT COUNT(*) FROM threads WHERE threads.board_id = boards.board_id) AS threads
 FROM boards
 WHERE slug = $1
 ;`
@@ -515,6 +516,7 @@ type ShowBoardFromSlugRow struct {
 	Slug    pgtype.Varchar `json:"slug"`
 	Title   pgtype.Varchar `json:"title"`
 	Tagline pgtype.Varchar `json:"tagline"`
+	Threads int            `json:"threads"`
 }
 
 // ShowBoardFromSlug implements Querier.ShowBoardFromSlug.
@@ -522,7 +524,7 @@ func (q *DBQuerier) ShowBoardFromSlug(ctx context.Context, slug string) (ShowBoa
 	ctx = context.WithValue(ctx, "pggen_query_name", "ShowBoardFromSlug")
 	row := q.conn.QueryRow(ctx, showBoardFromSlugSQL, slug)
 	var item ShowBoardFromSlugRow
-	if err := row.Scan(&item.BoardID, &item.Slug, &item.Title, &item.Tagline); err != nil {
+	if err := row.Scan(&item.BoardID, &item.Slug, &item.Title, &item.Tagline, &item.Threads); err != nil {
 		return item, fmt.Errorf("query ShowBoardFromSlug: %w", err)
 	}
 	return item, nil
@@ -537,7 +539,7 @@ func (q *DBQuerier) ShowBoardFromSlugBatch(batch genericBatch, slug string) {
 func (q *DBQuerier) ShowBoardFromSlugScan(results pgx.BatchResults) (ShowBoardFromSlugRow, error) {
 	row := results.QueryRow()
 	var item ShowBoardFromSlugRow
-	if err := row.Scan(&item.BoardID, &item.Slug, &item.Title, &item.Tagline); err != nil {
+	if err := row.Scan(&item.BoardID, &item.Slug, &item.Title, &item.Tagline, &item.Threads); err != nil {
 		return item, fmt.Errorf("scan ShowBoardFromSlugBatch row: %w", err)
 	}
 	return item, nil

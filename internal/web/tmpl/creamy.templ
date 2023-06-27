@@ -40,8 +40,15 @@ func nameFileThumb(thread *repo.Thread, post *repo.Post, file *repo.File) string
 	)
 }
 
+func linkBoardPage(board *repo.Board, page int) templ.SafeURL {
+	if page == 1 {
+		return templ.SafeURL(fmt.Sprintf("/%v/index.html", board.Slug))
+	} else {
+		return templ.SafeURL(fmt.Sprintf("/%v/%v.html", board.Slug, page))
+	}
+}
 func linkBoard(board *repo.Board) templ.SafeURL {
-	return templ.SafeURL(fmt.Sprintf("/%v/", board.Slug))
+	return linkBoardPage(board, 1)
 }
 func linkFile(board *repo.Board, thread *repo.Thread, post *repo.Post, file *repo.File) templ.SafeURL {
 	return templ.SafeURL(fmt.Sprintf(
@@ -275,7 +282,7 @@ templ ListBoards(boards []repo.Board) {
 	}
 }
 
-templ ShowBoardAndRecents(brt *repo.BoardRecentThreads, errorText string) {
+templ ShowBoardAndRecents(brt *repo.BoardRecentThreads, pageNum int, errorText string) {
 	@page(textBoard(&brt.Board), brt.Board.Tagline) {
 		@wrapperBoard(&brt.Board) {
 			@postForm(errorText, true)
@@ -283,6 +290,33 @@ templ ShowBoardAndRecents(brt *repo.BoardRecentThreads, errorText string) {
 			for _, thread := range brt.RecentThreads {
 				@threadFull(&brt.Board, &thread.Thread, &thread.MainPost, thread.RecentPosts, false)
 			}
+			<div class="paging">
+				if pageNum <= 1 {
+					<span>Previous&nbsp;</span>
+				} else {
+					<form method="GET" action={ string(linkBoardPage(&brt.Board, pageNum - 1)) }>
+						<button type="submit">Previous</button>
+					</form>
+				}
+				for i := pageNum - 3; i < pageNum; i++ {
+					if i >= 1 {
+						<span>[<a href={ linkBoardPage(&brt.Board, i) }>{ fmt.Sprintf("%v", i) }</a>]&nbsp;</span>
+					}
+				}
+				<span>[{ fmt.Sprintf("%v", pageNum) }]</span>
+				for i := pageNum +1; i < pageNum + 3; i++ {
+					if i <= brt.Pages {
+						<span>&nbsp;[<a href={ linkBoardPage(&brt.Board, i) }>{ fmt.Sprintf("%v", i) }</a>]</span>
+					}
+				}
+				if pageNum >= brt.Pages {
+					<span>&nbsp;Next</span>
+				} else {
+					<form method="GET" action={ string(linkBoardPage(&brt.Board, pageNum + 1)) }>
+						<button type="submit">Next</button>
+					</form>
+				}
+			</div>
 		}
 	}
 }
