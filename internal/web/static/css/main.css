@@ -158,6 +158,10 @@ hr {
   margin-right: 1em;
   margin-bottom: 1em;
 }
+.file__img[data-src-expanded="yes"] {
+  max-width: 100%;
+  max-height: 80vh;
+}
 
 .thread__posts .post__content {
   border: 1px solid var(--background3);

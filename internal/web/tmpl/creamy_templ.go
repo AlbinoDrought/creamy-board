@@ -674,6 +674,10 @@ func fileFull(board *repo.Board, thread *repo.Thread, post *repo.Post, file *rep
 			return err
 		}
 		// Element Attributes
+		_, err = templBuffer.WriteString(" data-src-expand-handler")
+		if err != nil {
+			return err
+		}
 		_, err = templBuffer.WriteString(" href=")
 		if err != nil {
 			return err
@@ -718,6 +722,22 @@ func fileFull(board *repo.Board, thread *repo.Thread, post *repo.Post, file *rep
 			return err
 		}
 		_, err = templBuffer.WriteString(templ.EscapeString(string(linkFileThumb(board, thread, post, file))))
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("\"")
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString(" data-src-expand-to=")
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("\"")
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString(templ.EscapeString(string(linkFile(board, thread, post, file))))
 		if err != nil {
 			return err
 		}
@@ -1887,6 +1907,28 @@ func wrapperBoard(board *repo.Board) templ.Component {
 			return err
 		}
 		_, err = templBuffer.WriteString("</h2>")
+		if err != nil {
+			return err
+		}
+		// Element (standard)
+		_, err = templBuffer.WriteString("<script")
+		if err != nil {
+			return err
+		}
+		// Element Attributes
+		_, err = templBuffer.WriteString(" type=\"text/javascript\"")
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString(" src=\"/js/board.js\"")
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString(">")
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</script>")
 		if err != nil {
 			return err
 		}

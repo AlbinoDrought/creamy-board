@@ -126,8 +126,12 @@ templ fileFull(board *repo.Board, thread *repo.Thread, post *repo.Post, file *re
 			</a><wbr />)
 		</div>
 		<div class="file__img-container">
-			<a href={ linkFile(board, thread, post, file) } target="_blank">
-				<img class="file__img" src={ string(linkFileThumb(board, thread, post, file)) } />
+			<a data-src-expand-handler href={ linkFile(board, thread, post, file) } target="_blank">
+				<img
+					class="file__img"
+					src={ string(linkFileThumb(board, thread, post, file)) }
+					data-src-expand-to={ string(linkFile(board, thread, post, file)) }
+				/>
 			</a>
 		</div>
 	</div>
@@ -255,6 +259,7 @@ templ page(title string, description string) {
 templ wrapperBoard(board *repo.Board) {
 	<h1 class="board__title">{ textBoard(board) }</h1>
 	<h2 class="board__tag">{ board.Tagline }</h2>
+	<script type="text/javascript" src="/js/board.js" />
 	{ children... }
 }
 
