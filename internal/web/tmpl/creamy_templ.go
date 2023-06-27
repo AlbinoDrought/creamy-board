@@ -1633,7 +1633,7 @@ func postForm(errorText string, requireFields bool) templ.Component {
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString(" name=\"file2\"")
+		_, err = templBuffer.WriteString(" name=\"file3\"")
 		if err != nil {
 			return err
 		}
