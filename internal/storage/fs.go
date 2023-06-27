@@ -27,6 +27,8 @@ func (d *FSDriver) Read(ctx context.Context, path string) (io.ReadCloser, error)
 }
 
 func (d *FSDriver) Write(ctx context.Context, path string, stream io.Reader) error {
+	os.MkdirAll(filepath.Dir(safeFsPath(d.Path, path)), os.ModePerm)
+
 	handle, err := os.Create(safeFsPath(d.Path, path))
 	if err != nil {
 		return err
