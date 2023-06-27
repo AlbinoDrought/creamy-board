@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"encoding/hex"
 	"errors"
 	"os"
 
@@ -25,14 +26,28 @@ func bootDB5(ctx context.Context) (*pgx5.Conn, error) {
 }
 
 var ErrUnknownStorageDriver = errors.New("unknown storage driver")
+var ErrXorValueMustBeOneByte = errors.New("xor value must be one byte")
 
 func bootStorage(ctx context.Context) (storage.Driver, error) {
 	driver := os.Getenv("CREAMY_STORAGE_DRIVER")
 
 	if driver == "" || driver == "fs" {
 		path := os.Getenv("CREAMY_STORAGE_PATH")
+		xorStr := os.Getenv("CREAMY_STORAGE_XOR")
+		xor := byte(0)
+		if xorStr != "" {
+			xorBytes, err := hex.DecodeString(xorStr)
+			if err != nil {
+				return nil, err
+			}
+			if len(xorBytes) != 1 {
+				return nil, ErrXorValueMustBeOneByte
+			}
+			xor = xorBytes[0]
+		}
 		return &storage.FSDriver{
 			Path: path,
+			XOR:  xor,
 		}, nil
 	}
 

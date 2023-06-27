@@ -37,6 +37,7 @@ For an out-of-the-box compose file, see [./compose/docker-compose.yml](./compose
 - `CREAMY_STORAGE_DRIVER`: `fs` or `minio`
   - if `fs`:
     - `CREAMY_STORAGE_PATH`: files will be saved to this path
+    - `CREAMY_STORAGE_XOR`: xor all file streams using this single hex byte to prevent the host system from generating thumbnails (ex. `CREAMY_STORAGE_XOR=BA`) (this is not encryption)
   - if `minio`:
     - `CREAMY_MINIO_KEY`: Minio access key
     - `CREAMY_MINIO_SECRET`: Minio secret key
