@@ -125,12 +125,12 @@ templ fileFull(board *repo.Board, thread *repo.Thread, post *repo.Post, file *re
 			File:
 			<a href={ linkFile(board, thread, post, file) } target="_blank">
 				{ nameFile(thread, post, file) }
-			</a>&nbsp;(<span>
+			</a>&nbsp;<wbr />(<span>
 				{ humanizeBytes(file.Bytes) }
 			</span><wbr />,
 			<a href={ linkFile(board, thread, post, file) } download={ file.OriginalName } title="Save as original filename">
 				{ file.OriginalName }
-			</a><wbr />)
+			</a>)
 		</div>
 		<div class="file__img-container">
 			<a data-src-expand-handler href={ linkFile(board, thread, post, file) } target="_blank">
