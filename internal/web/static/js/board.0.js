@@ -10,6 +10,9 @@ function toggleExpand(e, el) {
   var nextSrc = el.getAttribute('data-src-expand-to');
   var expandedState = el.getAttribute('data-src-expanded');
 
+  // unless we removeAttribute('src') first,
+  // my browser displays the oldSrc until newSrc is fully loaded
+  el.removeAttribute('src');
   el.setAttribute('src', nextSrc);
   el.setAttribute('data-src-expand-to', src);
   el.setAttribute('data-src-expanded', expandedState === 'yes' ? 'no' : 'yes');
