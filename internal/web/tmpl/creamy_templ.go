@@ -76,7 +76,7 @@ func linkFileThumb(board *repo.Board, thread *repo.Thread, post *repo.Post, file
 		))
 	}
 
-	return templ.SafeURL("/img/default-thumb.png")
+	return templ.SafeURL("/img/default-thumb.0.png")
 }
 func linkThreadShow(board *repo.Board, thread *repo.Thread) templ.SafeURL {
 	return templ.SafeURL(fmt.Sprintf("/%v/res/%v.html", board.Slug, thread.ID))
@@ -1815,7 +1815,7 @@ func page(title string, description string) templ.Component {
 			return err
 		}
 		// Element Attributes
-		_, err = templBuffer.WriteString(" href=\"/css/main.css\"")
+		_, err = templBuffer.WriteString(" href=\"/css/main.0.css\"")
 		if err != nil {
 			return err
 		}
@@ -1927,7 +1927,7 @@ func wrapperBoard(board *repo.Board) templ.Component {
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString(" src=\"/js/board.js\"")
+		_, err = templBuffer.WriteString(" src=\"/js/board.0.js\"")
 		if err != nil {
 			return err
 		}
@@ -2598,7 +2598,7 @@ func ShowFullThread(bft *repo.BoardFullThread, errorText string) templ.Component
 				if err != nil {
 					return err
 				}
-				_, err = templBuffer.WriteString(" src=\"/js/thread.js\"")
+				_, err = templBuffer.WriteString(" src=\"/js/thread.0.js\"")
 				if err != nil {
 					return err
 				}

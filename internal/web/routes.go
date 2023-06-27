@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/NYTimes/gziphandler"
 	"github.com/go-chi/chi"
 	"go.albinodrought.com/creamy-board/internal/cfg"
 	"go.albinodrought.com/creamy-board/internal/repo"
@@ -15,7 +16,10 @@ func Router() http.Handler {
 	r := chi.NewRouter()
 
 	fileServer := http.FileServer(http.FS(static.FS))
-	r.NotFound(fileServer.ServeHTTP)
+	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Add("Cache-Control", "public, max-age=86400, stale-while-revalidate")
+		fileServer.ServeHTTP(w, r)
+	})
 
 	repo := repo.DBRepo{
 		Querier: cfg.Querier,
@@ -143,5 +147,5 @@ func Router() http.Handler {
 		jsonPortal.ShowThread(w, r, chi.URLParam(r, "boardSlug"), threadID)
 	})
 
-	return r
+	return gziphandler.GzipHandler(r)
 }

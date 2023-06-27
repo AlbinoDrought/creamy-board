@@ -7,6 +7,7 @@ require (
 	github.com/Masterminds/semver/v3 v3.2.0 // indirect
 	github.com/Masterminds/sprig/v3 v3.2.3 // indirect
 	github.com/Microsoft/go-winio v0.5.1 // indirect
+	github.com/NYTimes/gziphandler v1.1.1 // indirect
 	github.com/a-h/templ v0.2.304 // indirect
 	github.com/aws/aws-sdk-go v1.44.289 // indirect
 	github.com/containerd/containerd v1.5.7 // indirect

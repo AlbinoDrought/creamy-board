@@ -66,7 +66,7 @@ func linkFileThumb(board *repo.Board, thread *repo.Thread, post *repo.Post, file
 		))
 	}
 
-	return templ.SafeURL("/img/default-thumb.png")
+	return templ.SafeURL("/img/default-thumb.0.png")
 }
 func linkThreadShow(board *repo.Board, thread *repo.Thread) templ.SafeURL {
 	return templ.SafeURL(fmt.Sprintf("/%v/res/%v.html", board.Slug, thread.ID))
@@ -255,7 +255,7 @@ templ page(title string, description string) {
       <meta name="description" content="{ description }" />
       <link rel="icon" href="/favicon.ico" />
       <title>{ title }</title>
-			<link href="/css/main.css" rel="stylesheet" />
+			<link href="/css/main.0.css" rel="stylesheet" />
     </head>
     <body>
       { children... }
@@ -266,7 +266,7 @@ templ page(title string, description string) {
 templ wrapperBoard(board *repo.Board) {
 	<h1 class="board__title">{ textBoard(board) }</h1>
 	<h2 class="board__tag">{ board.Tagline }</h2>
-	<script type="text/javascript" src="/js/board.js" />
+	<script type="text/javascript" src="/js/board.0.js" />
 	{ children... }
 }
 
@@ -332,7 +332,7 @@ templ ShowFullThread(bft *repo.BoardFullThread, errorText string) {
 				</div>
 			</div>
 			@postForm(errorText, false)
-			<script type="text/javascript" src="/js/thread.js" />
+			<script type="text/javascript" src="/js/thread.0.js" />
 			<hr />
 			@threadFull(&bft.Board, &bft.FullThread.Thread, &bft.FullThread.MainPost, bft.FullThread.AllPosts, true)
 		}
